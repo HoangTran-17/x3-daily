@@ -1,4 +1,5 @@
 _site/
+out-private/
 work/
 __pycache__/
 *.pyc

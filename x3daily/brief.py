@@ -1,6 +1,5 @@
 """Assemble brief.json (schema v1)."""
 import json
-import re
 
 from .config import BRIEF_MAX_BYTES
 
@@ -48,7 +47,3 @@ def public_version(brief):
     """Copy of the brief without any calendar data."""
     return {k: v for k, v in brief.items() if k != "events"}
 
-
-def valid_secret_path(s):
-    """Secret URL segment: 16+ chars of [A-Za-z0-9_-] so it is a single, unguessable path part."""
-    return bool(s) and re.fullmatch(r"[A-Za-z0-9_-]{16,}", s) is not None

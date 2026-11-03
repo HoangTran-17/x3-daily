@@ -6,7 +6,7 @@ Soạn bản tin mỗi sáng cho máy đọc sách Xteink X3 bằng GitHub Actio
 
 - `brief.json` (schema v1, ≤4 KB): firmware vẽ lên màn ngủ. Có thời tiết, giá vàng nhẫn 9999, tin AI, châm ngôn.
 - `bao-sang-YYYYMMDD.epub` + `opds.xml`: bản "Báo sáng" để đọc trên máy qua OPDS (giữ 7 số gần nhất).
-- Lịch Google **không** nằm trong file công khai. Nó chỉ có trong `/<BRIEF_SECRET_PATH>/brief.json`.
+- Lịch Google **không** nằm trên Pages hay trong artifact nào. Bản có lịch chỉ được ghi vào 1 secret gist.
 - Pages URL dự kiến: `https://hoangtran-17.github.io/x3-daily/`
 - Chạy lúc ~04:10 giờ VN mỗi ngày. Một nguồn lỗi thì bỏ field đó, bản tin vẫn ra.
 
@@ -34,7 +34,7 @@ python -m pytest -q              # test offline
 
 - Cần Python 3.11+. Chạy `build` chỉ cần stdlib. Muốn có EPUB: `pip install` x3book (xem dưới).
 - Thiếu `x3book` thì bản tin vẫn ra, chỉ bỏ số EPUB hôm đó.
-- `_site/` nằm trong `.gitignore`. `data/gold.csv` được commit.
+- `_site/` và `out-private/` (bản có lịch, chỉ có khi đặt `GCAL_ICS_URL`) nằm trong `.gitignore`. `data/gold.csv` được commit.
 
 ## Cài đặt trên GitHub
 
@@ -42,13 +42,14 @@ python -m pytest -q              # test offline
 2. **Settings → Pages → Source: GitHub Actions**.
 3. Tạo repo public `HoangTran-17/x3book` (chưa tồn tại). Workflow cài tool bằng
    `pip install git+https://github.com/HoangTran-17/x3book`. Chưa có repo này thì bước build **sẽ lỗi**.
-4. Thêm secret (Settings → Secrets and variables → Actions). Cả 3 đều **tuỳ chọn**:
+4. Thêm secret (Settings → Secrets and variables → Actions). Tất cả đều **tuỳ chọn**:
 
 | Secret | Dùng để | Thiếu thì |
 |---|---|---|
 | `CLAUDE_CODE_OAUTH_TOKEN` | Claude dịch/tóm tắt tin AI sang tiếng Việt | Dùng tiêu đề tiếng Anh gốc |
 | `GCAL_ICS_URL` | Link ICS bí mật của Google Calendar | Không có ô lịch |
-| `BRIEF_SECRET_PATH` | Đoạn đường dẫn bí mật cho file có lịch | Không có ô lịch |
+| `GIST_TOKEN` | PAT chỉ có quyền gist, để ghi bản có lịch | Không có ô lịch |
+| `GIST_ID` | ID của secret gist chứa bản có lịch | Không có ô lịch |
 
 5. Chạy tay lần đầu: **Actions → Bản tin hằng ngày → Run workflow**.
 
@@ -61,15 +62,30 @@ python -m pytest -q              # test offline
 
 ### Lịch Google (bí mật)
 
-1. Google Calendar → Settings → lịch của bạn → **Secret address in iCal format**. Copy link vào `GCAL_ICS_URL`.
-2. Tạo chuỗi ngẫu nhiên ≥16 ký tự gồm `A-Z a-z 0-9 _ -` cho `BRIEF_SECRET_PATH`, ví dụ:
-   `python -c "import secrets; print(secrets.token_urlsafe(24))"`.
-3. Firmware tải `https://hoangtran-17.github.io/x3-daily/<BRIEF_SECRET_PATH>/brief.json`. Link này là bí mật: ai có link thì đọc được lịch.
-4. Bảo vệ dữ liệu lịch:
-   - Không commit dữ liệu lịch. Pages deploy bằng artifact.
-   - Log không in sự kiện, không in URL.
+Repo public nên ai có tài khoản GitHub cũng tải được artifact `github-pages`. Vì vậy bản có lịch
+không vào Pages. Build ghi nó ra `out-private/brief.json` (ngoài `_site/`), rồi Actions đẩy lên 1 secret gist.
+
+1. Google Calendar → Settings → lịch của bạn → **Secret address in iCal format**. Copy link vào secret `GCAL_ICS_URL`.
+2. Tạo secret gist: vào <https://gist.github.com>, tên file `brief.json`, nội dung `{}`
+   (GitHub không cho tạo gist rỗng), bấm **Create secret gist**.
+   `GIST_ID` là đoạn hex cuối URL gist: `https://gist.github.com/<user>/<GIST_ID>`.
+3. Tạo token chỉ ghi được gist, chọn 1 trong 2:
+   - Classic PAT: Settings → Developer settings → Personal access tokens → Tokens (classic). Chỉ tick scope `gist`.
+   - Fine-grained PAT: Account permissions → **Gists: Read and write**. Không cần quyền repo nào.
+4. Thêm 3 secret vào repo: `GCAL_ICS_URL`, `GIST_TOKEN` (token ở bước 3), `GIST_ID` (chỉ ID, không phải URL).
+   Thiếu 1 trong 3 thì bước gist tự bỏ qua, workflow vẫn xanh. Ghi gist lỗi thì có warning, Pages vẫn deploy.
+5. Link máy cần tải (không gắn commit SHA nên luôn là bản mới nhất):
+   `https://gist.githubusercontent.com/<user>/<GIST_ID>/raw/brief.json`
+6. Ghi link đó (1 dòng) vào file `/.crosspoint/brief_url.txt` trên thẻ SD của máy. Không có file này thì firmware
+   dùng bản công khai trên Pages (không có lịch).
+7. **Cảnh báo:** secret gist chỉ là không được liệt kê, không có mật khẩu. Ai có link gist thì đọc được lịch hôm đó.
+   Lộ link thì xoá gist, tạo gist mới và đổi `GIST_ID` + `brief_url.txt`.
+8. Raw gist có thể bị cache ~5 phút sau khi cập nhật. Actions chạy lúc ~04:10, máy tải lúc sáng sau đó nên không ảnh hưởng.
+9. Bảo vệ dữ liệu lịch:
+   - Không commit dữ liệu lịch. `out-private/` không nằm trong artifact Pages, cũng không được upload artifact nào khác.
+   - Log không in sự kiện, không in URL, không in token.
    - EPUB và `/brief.json` công khai không có lịch (có test kiểm tra).
-5. Giới hạn parser ICS (stdlib, tự viết):
+10. Giới hạn parser ICS (stdlib, tự viết):
    - **Không** mở rộng `RRULE` (sự kiện lặp). Sự kiện lặp chỉ hiện đúng ngày `DTSTART` gốc. Ngày lặp sau đó sẽ không hiện.
    - Bỏ qua `EXDATE`, `RECURRENCE-ID`. Bỏ sự kiện `STATUS:CANCELLED`.
    - Sự kiện cả ngày: ô `time` là `"Cả ngày"` (không phải `HH:MM`). Cần kiểm tra firmware vẽ được chuỗi này.

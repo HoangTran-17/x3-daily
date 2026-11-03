@@ -64,7 +64,6 @@ jobs:
       - name: Build site
         env:
           GCAL_ICS_URL: ${{ secrets.GCAL_ICS_URL }}
-          BRIEF_SECRET_PATH: ${{ secrets.BRIEF_SECRET_PATH }}
           PAGES_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
         run: python -m x3daily build
       - name: Commit gold history
@@ -81,6 +80,32 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+      - name: Update secret gist with calendar brief (optional)
+        # The calendar brief stays out of every artifact; it only leaves the runner via the gist API.
+        # continue-on-error: a gist failure must not block today's public Pages deploy.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GIST_TOKEN }}
+          GIST_ID: ${{ secrets.GIST_ID }}
+        run: |
+          if [ -z "$GH_TOKEN" ] || [ -z "$GIST_ID" ] || [ ! -f out-private/brief.json ]; then
+            echo "Gist skipped: needs GCAL_ICS_URL, GIST_TOKEN and GIST_ID"
+            exit 0
+          fi
+          if ! printf '%s' "$GIST_ID" | grep -Eq '^[0-9a-f]+$'; then
+            echo "::warning::GIST_ID must be the hex id of the gist, not its URL"
+            exit 1
+          fi
+          payload="$RUNNER_TEMP/gist.json"
+          python -c 'import json,sys; print(json.dumps({"files": {"brief.json": {"content": open(sys.argv[1], encoding="utf-8").read()}}}))' out-private/brief.json > "$payload"
+          if gh api --method PATCH "gists/$GIST_ID" --input "$payload" --silent; then
+            echo "Gist updated"
+          else
+            echo "::warning::Gist update failed; check GIST_TOKEN (scope gist) and GIST_ID"
+            rm -f "$payload"
+            exit 1
+          fi
+          rm -f "$payload" out-private/brief.json
 
   deploy:
     needs: build
