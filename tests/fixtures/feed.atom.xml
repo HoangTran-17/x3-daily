@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Sample Atom feed</title>
+  <entry>
+    <title>Regulators publish new AI rules</title>
+    <link rel="alternate" type="text/html" href="https://example.org/rules"/>
+    <link rel="replies" href="https://example.org/rules#comments"/>
+    <published>2026-11-02T23:30:00Z</published>
+    <summary>Short summary of the rules.</summary>
+  </entry>
+  <entry>
+    <title>Too old to show</title>
+    <link href="https://example.org/old"/>
+    <updated>2026-10-01T00:00:00Z</updated>
+  </entry>
+</feed>

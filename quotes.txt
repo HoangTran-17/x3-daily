@@ -1,0 +1,61 @@
+# One quote per line: text | author. Lines starting with # are ignored.
+Có công mài sắt, có ngày nên kim. | Tục ngữ
+Thất bại là mẹ thành công. | Tục ngữ
+Đi một ngày đàng, học một sàng khôn. | Tục ngữ
+Nước chảy đá mòn. | Tục ngữ
+Có chí thì nên. | Tục ngữ
+Gần mực thì đen, gần đèn thì rạng. | Tục ngữ
+Không thầy đố mày làm nên. | Tục ngữ
+Tốt gỗ hơn tốt nước sơn. | Tục ngữ
+Cái khó ló cái khôn. | Tục ngữ
+Dục tốc bất đạt. | Thành ngữ
+Nhất nghệ tinh, nhất thân vinh. | Tục ngữ
+Kiến tha lâu đầy tổ. | Tục ngữ
+Thua keo này, bày keo khác. | Tục ngữ
+Mưa dầm thấm lâu. | Tục ngữ
+Cẩn tắc vô ưu. | Thành ngữ
+Tích tiểu thành đại. | Thành ngữ
+Học thầy không tày học bạn. | Tục ngữ
+Ăn quả nhớ kẻ trồng cây. | Tục ngữ
+Uống nước nhớ nguồn. | Tục ngữ
+Lá lành đùm lá rách. | Tục ngữ
+Sai một li, đi một dặm. | Thành ngữ
+Thương người như thể thương thân. | Tục ngữ
+Một cây làm chẳng nên non, ba cây chụm lại nên hòn núi cao. | Ca dao
+Lời nói chẳng mất tiền mua, lựa lời mà nói cho vừa lòng nhau. | Ca dao
+Ai ơi giữ chí cho bền, dù ai xoay hướng đổi nền mặc ai. | Ca dao
+Trăm năm bia đá thì mòn, nghìn năm bia miệng vẫn còn trơ trơ. | Ca dao
+Công cha như núi Thái Sơn, nghĩa mẹ như nước trong nguồn chảy ra. | Ca dao
+Chớ thấy sóng cả mà ngã tay chèo. | Ca dao
+Đường đi khó không khó vì ngăn sông cách núi, mà khó vì lòng người ngại núi e sông. | Nguyễn Bá Học
+Chữ tâm kia mới bằng ba chữ tài. | Nguyễn Du
+Việc nhân nghĩa cốt ở yên dân. | Nguyễn Trãi
+Không có gì quý hơn độc lập, tự do. | Hồ Chí Minh
+Học, học nữa, học mãi. | V. I. Lenin
+Hành trình ngàn dặm bắt đầu từ một bước chân. | Lão Tử
+Việc khó trong thiên hạ bắt đầu từ chỗ dễ, việc lớn bắt đầu từ chỗ nhỏ. | Lão Tử
+Người thắng người là có sức mạnh, người thắng được mình mới là kẻ mạnh. | Lão Tử
+Biết đủ thì không nhục, biết dừng thì không nguy. | Lão Tử
+Điều gì mình không muốn, đừng làm cho người khác. | Khổng Tử
+Học mà không nghĩ thì uổng công, nghĩ mà không học thì nguy hiểm. | Khổng Tử
+Ba người cùng đi, ắt có người là thầy ta. | Khổng Tử
+Biết thì nói là biết, không biết thì nói là không biết, đó mới thật là biết. | Khổng Tử
+Trời sắp giao việc lớn cho ai, ắt trước làm khổ tâm chí người ấy. | Mạnh Tử
+Biết người biết ta, trăm trận không nguy. | Tôn Tử
+Trăm trận trăm thắng chưa phải giỏi nhất; không đánh mà khuất phục được người mới là giỏi nhất. | Tôn Tử
+Kẻ thắng thì thắng trước rồi mới đánh; kẻ bại thì đánh rồi mới tìm cách thắng. | Tôn Tử
+Không phải vì khó mà ta không dám; chính vì ta không dám mà việc trở nên khó. | Seneca
+Ta chịu khổ trong tưởng tượng nhiều hơn trong thực tế. | Seneca
+Trở ngại trên đường đi chính là con đường. | Marcus Aurelius
+Không phải sự việc làm ta rối trí, mà là cách ta nhìn sự việc. | Epictetus
+Cuộc đời không được suy xét thì không đáng sống. | Socrates
+Công việc xua đi ba nỗi khổ lớn: buồn chán, thói hư và cái nghèo. | Voltaire
+Đầu tư vào tri thức mang lại lợi nhuận cao nhất. | Benjamin Franklin
+Tri thức là sức mạnh. | Francis Bacon
+Biết thôi chưa đủ, phải áp dụng; muốn thôi chưa đủ, phải làm. | Goethe
+Ai cũng muốn thay đổi thế giới, nhưng chẳng ai nghĩ đến việc thay đổi chính mình. | Lev Tolstoy
+Lao động chinh phục mọi thứ. | Virgil
+Một căn phòng không có sách cũng như thân thể không có hồn. | Cicero
+Nếu tự tin tiến về phía ước mơ và sống đúng cuộc đời đã hình dung, ta sẽ gặp thành công ngoài mong đợi. | Henry David Thoreau
+Có làm thì mới có ăn. | Tục ngữ
+Ở hiền gặp lành. | Tục ngữ

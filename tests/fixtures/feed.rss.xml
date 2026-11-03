@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Sample AI feed</title>
+    <item>
+      <title>Lab A releases a faster reasoning model</title>
+      <link>https://example.com/a</link>
+      <pubDate>Tue, 03 Nov 2026 01:00:00 +0000</pubDate>
+      <description>&lt;p&gt;The new model &amp;amp; its pricing.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Lab A releases a faster reasoning model!</title>
+      <link>https://example.com/a-dup</link>
+      <pubDate>Tue, 03 Nov 2026 01:05:00 +0000</pubDate>
+      <description>Duplicate title from a second link.</description>
+    </item>
+    <item>
+      <title>Old story from last week</title>
+      <link>https://example.com/old</link>
+      <pubDate>Tue, 27 Oct 2026 01:00:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>Item without a date</title>
+      <link>https://example.com/nodate</link>
+    </item>
+    <item>
+      <title>Chip startup raises funding</title>
+      <link>https://example.com/chip</link>
+      <dc:date>2026-11-02T20:00:00+00:00</dc:date>
+    </item>
+  </channel>
+</rss>
