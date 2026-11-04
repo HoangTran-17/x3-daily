@@ -30,6 +30,7 @@ jobs:
       - name: Collect news
         run: python -m x3daily collect-news
       - name: Summarize in Vietnamese with Claude (optional)
+        id: claude
         if: env.HAS_CLAUDE == 'true'
         continue-on-error: true
         uses: anthropics/claude-code-action@v1
@@ -38,6 +39,20 @@ jobs:
           github_token: ${{ github.token }}
           prompt: "Read prompts/news_summary.md and follow it exactly."
           claude_args: --allowedTools "Read,Write" --max-turns 6
+      # The action hides its output; print only the final error text (e.g. bad token) so failures are diagnosable.
+      - name: Show Claude error
+        if: steps.claude.outcome == 'failure' && steps.claude.outputs.execution_file != ''
+        env:
+          EXEC_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          data = json.load(open(os.environ["EXEC_FILE"]))
+          items = data if isinstance(data, list) else [data]
+          for it in items:
+              if isinstance(it, dict) and it.get("type") == "result":
+                  print("::warning::Claude: " + str(it.get("result", ""))[:300].replace("\n", " "))
+          EOF
       - uses: actions/upload-artifact@v4
         with:
           name: news
@@ -75,6 +90,7 @@ jobs:
             echo "No change in gold.csv"
           else
             git commit -m "Cập nhật lịch sử giá vàng $(date -u +%F)"
+            git pull --rebase -q # main may have moved since checkout (re-run of an old run)
             git push
           fi
       - uses: actions/upload-pages-artifact@v3
