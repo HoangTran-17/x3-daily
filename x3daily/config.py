@@ -14,6 +14,8 @@ GOLD_CSV = ROOT / "data" / "gold.csv"
 QUOTES_FILE = ROOT / "quotes.txt"
 WORK_DIR = ROOT / "work"
 SITE_DIR = ROOT / "_site"
+# Calendar brief lives outside SITE_DIR: everything in SITE_DIR ends up in a downloadable public artifact.
+PRIVATE_DIR = ROOT / "out-private"
 
 # PNJ public JSON, zone 00 = TP.HCM. Product code N24K = "Nhan Tron PNJ 999.9".
 PNJ_URL = "https://edge-api.pnj.io/ecom-frontend/v1/get-gold-price?zone=00"

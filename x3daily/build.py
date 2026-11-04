@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 
 from . import brief, calendar_ics, epub, gold, news, opds, quotes, weather
-from .config import DEFAULT_BASE_URL, GOLD_CSV, QUOTES_FILE, SITE_DIR, VN, WORK_DIR
+from .config import DEFAULT_BASE_URL, GOLD_CSV, PRIVATE_DIR, QUOTES_FILE, SITE_DIR, VN, WORK_DIR
 
 log = logging.getLogger("x3daily")
 
@@ -54,8 +54,9 @@ def build(now):
     base_url = os.environ.get("PAGES_BASE_URL", DEFAULT_BASE_URL)
     if not base_url.endswith("/"):
         base_url += "/"
-    if SITE_DIR.exists():
-        shutil.rmtree(SITE_DIR)
+    for d in (SITE_DIR, PRIVATE_DIR):
+        if d.exists():
+            shutil.rmtree(d)
     SITE_DIR.mkdir()
     WORK_DIR.mkdir(exist_ok=True)
 
@@ -77,16 +78,14 @@ def build(now):
     public = brief.public_version(full)
     (SITE_DIR / "brief.json").write_bytes(brief.fit(public))
 
-    secret = os.environ.get("BRIEF_SECRET_PATH", "").strip()
     ics_url = os.environ.get("GCAL_ICS_URL", "").strip()
-    if ics_url and brief.valid_secret_path(secret):
+    if ics_url:
         events = calendar_ics.fetch_events(ics_url, today)
         full = brief.build_brief(now, wx, block, [t for _, t, _ in items], quote, events)
-        (SITE_DIR / secret).mkdir()
-        (SITE_DIR / secret / "brief.json").write_bytes(brief.fit(full))
-        log.info("calendar: %d events written to the secret brief", len(events))
-    elif ics_url or secret:
-        log.warning("calendar: needs both GCAL_ICS_URL and a valid BRIEF_SECRET_PATH (16+ chars of A-Z a-z 0-9 _ -); skipped")
+        # Written even with no events so the gist never keeps yesterday's calendar.
+        PRIVATE_DIR.mkdir()
+        (PRIVATE_DIR / "brief.json").write_bytes(brief.fit(full))
+        log.info("calendar: %d events written to the private brief", len(events))
 
     build_epub(now, wx, price, hist, block, items, quote, base_url)
     (SITE_DIR / ".nojekyll").write_text("", encoding="utf-8")

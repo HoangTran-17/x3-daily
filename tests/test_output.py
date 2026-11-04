@@ -14,7 +14,6 @@ from x3daily.config import BRIEF_MAX_BYTES, VN
 FX = Path(__file__).parent / "fixtures"
 NOW = datetime(2026, 11, 3, 4, 10, tzinfo=VN)
 BASE = "https://example.github.io/x3-daily/"
-SECRET = "Abc123_secret-path-xyz"
 ICS_URL = "https://calendar.example.com/private/very-secret-token/basic.ics"
 
 
@@ -52,12 +51,6 @@ def test_brief_realistic_size_is_small():
 def test_public_brief_has_no_events():
     pub = brief.public_version(_sample_brief())
     assert "events" not in pub and "weather" in pub
-
-
-def test_secret_path_validation():
-    assert brief.valid_secret_path(SECRET)
-    for bad in ("", "short", "has/slash-0123456789", "../../etc/passwd-xxxx", "space in it 0123456789"):
-        assert not brief.valid_secret_path(bad)
 
 
 # ---- EPUB ----
@@ -166,17 +159,17 @@ def sandbox(tmp_path, monkeypatch):
     monkeypatch.setattr(net, "get", _fake_get)
     monkeypatch.setattr(build, "SITE_DIR", tmp_path / "_site")
     monkeypatch.setattr(build, "WORK_DIR", tmp_path / "work")
+    monkeypatch.setattr(build, "PRIVATE_DIR", tmp_path / "out-private")
     monkeypatch.setattr(build, "GOLD_CSV", tmp_path / "gold.csv")
     monkeypatch.setattr(build, "_run_x3book", lambda raw, out: Path(out).write_bytes(Path(raw).read_bytes()) or True)
     monkeypatch.setenv("PAGES_BASE_URL", BASE)
     monkeypatch.delenv("GCAL_ICS_URL", raising=False)
-    monkeypatch.delenv("BRIEF_SECRET_PATH", raising=False)
     return tmp_path
 
 
-def _all_bytes(site, skip_dir=None):
+def _all_bytes(site):
     for p in site.rglob("*"):
-        if p.is_file() and (skip_dir is None or skip_dir not in p.parents):
+        if p.is_file():
             data = p.read_bytes()
             if p.suffix == ".epub":
                 with zipfile.ZipFile(p) as z:
@@ -184,24 +177,24 @@ def _all_bytes(site, skip_dir=None):
             yield p, data
 
 
-def test_end_to_end_public_file_has_no_calendar(sandbox, monkeypatch, caplog):
+def test_end_to_end_calendar_only_in_private_brief(sandbox, monkeypatch, caplog):
     monkeypatch.setenv("GCAL_ICS_URL", ICS_URL)
-    monkeypatch.setenv("BRIEF_SECRET_PATH", SECRET)
     caplog.set_level(logging.DEBUG)
     build.build(NOW)
     site = sandbox / "_site"
 
     public = json.loads((site / "brief.json").read_text(encoding="utf-8"))
     assert "events" not in public and public["gold"]["sell"] == "138,9"
-    secret_file = site / SECRET / "brief.json"
-    private = json.loads(secret_file.read_text(encoding="utf-8"))
+    assert [p.name for p in site.iterdir() if p.is_dir()] == []
+    private_file = sandbox / "out-private" / "brief.json"
+    private = json.loads(private_file.read_text(encoding="utf-8"))
     assert len(private["events"]) >= 4
-    assert len(secret_file.read_bytes()) <= BRIEF_MAX_BYTES
+    assert len(private_file.read_bytes()) <= BRIEF_MAX_BYTES
 
-    # calendar text must appear only under the secret directory (also not inside the EPUB)
-    for p, data in _all_bytes(site, skip_dir=site / SECRET):
+    # nothing deployed to Pages (also not inside the EPUB) may carry calendar text
+    for p, data in _all_bytes(site):
         assert "Họp nhóm".encode() not in data, p
-        assert SECRET.encode() not in data, p
+        assert b"very-secret-token" not in data, p
     assert "Họp nhóm" not in caplog.text and "very-secret-token" not in caplog.text
 
     assert (site / "bao-sang-20261103.epub").exists()
@@ -209,10 +202,21 @@ def test_end_to_end_public_file_has_no_calendar(sandbox, monkeypatch, caplog):
     assert (sandbox / "gold.csv").read_text(encoding="utf-8").splitlines()[-1] == "2026-11-03,13490,13890"
 
 
-def test_end_to_end_without_calendar_secrets_writes_no_secret_dir(sandbox):
+def test_end_to_end_without_calendar_writes_no_private_brief(sandbox):
     build.build(NOW)
     assert [p.name for p in (sandbox / "_site").iterdir() if p.is_dir()] == []
     assert "events" not in json.loads((sandbox / "_site" / "brief.json").read_text(encoding="utf-8"))
+    assert not (sandbox / "out-private").exists()
+
+
+def test_private_brief_is_rewritten_when_calendar_fetch_fails(sandbox, monkeypatch):
+    # A stale private file from an earlier run must not survive into today's gist upload.
+    monkeypatch.setenv("GCAL_ICS_URL", "https://calendar.example.com/down.ics")
+    stale = sandbox / "out-private" / "brief.json"
+    stale.parent.mkdir()
+    stale.write_text('{"events":[{"time":"09:00","t":"old"}]}', encoding="utf-8")
+    build.build(NOW)
+    assert "events" not in json.loads(stale.read_text(encoding="utf-8"))
 
 
 def test_end_to_end_survives_every_source_failing(sandbox, monkeypatch):
