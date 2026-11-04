@@ -100,7 +100,7 @@ def test_rss_parse_drops_items_without_date_and_strips_html():
     items = news.parse_feed((FX / "feed.rss.xml").read_bytes(), "Src")
     titles = [i.title for i in items]
     assert "Item without a date" not in titles
-    assert len(items) == 4
+    assert len(items) == 5
     assert items[0].summary == "The new model & its pricing."
 
 
@@ -119,7 +119,47 @@ def test_select_window_and_dedupe():
     assert "Old story from last week" not in titles
     assert "Too old to show" not in titles
     assert "Chip startup raises funding" in titles
+    assert not any("TechCrunch Disrupt" in t for t in titles)  # promo filtered before the limit
     assert chosen == sorted(chosen, key=lambda i: i.published, reverse=True)
+
+
+PROMO_TITLES = [
+    "Last 48 hours to save up to $600 on TechCrunch Disrupt 2026 passes",
+    "StrictlyVC heads to Palo Alto: grab your tickets",
+    "Early bird pricing ends tonight for TC Sessions: AI",
+    "Join our webinar on scaling LLM inference",
+    "Black Friday: 40% off our AI course",
+    "Partner Content: How one bank modernised with AI",
+    "Save $300 on passes when you register now",
+]
+NEWS_TITLES = [
+    "OpenAI to hold a launch event for its new device next week",
+    "Google's AI conference event recap: everything announced",
+    "Startup launches open-source model that rivals GPT",
+    "State-sponsored hackers use AI tools to write malware",
+    "Officials save millions with AI fraud detection",
+    "Ticketmaster faces probe over AI pricing",
+]
+
+
+@pytest.mark.parametrize("title", PROMO_TITLES)
+def test_promo_titles_are_dropped(title):
+    it = news.Item(title, "https://x/p", NOW - timedelta(hours=1), "S")
+    assert news.is_promo(it)
+    assert news.select([it], NOW) == []
+
+
+@pytest.mark.parametrize("title", NEWS_TITLES)
+def test_real_news_titles_are_kept(title):
+    it = news.Item(title, "https://x/n", NOW - timedelta(hours=1), "S", "The company said the event drew a crowd.")
+    assert not news.is_promo(it)
+    assert news.select([it], NOW) == [it]
+
+
+def test_promo_in_summary_only_is_dropped():
+    it = news.Item("Meet the founders building agents", "https://x/s", NOW - timedelta(hours=1), "S",
+                   "This is sponsored content from our partner.")
+    assert news.is_promo(it)
 
 
 def test_select_limit():

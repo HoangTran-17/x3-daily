@@ -28,5 +28,11 @@
       <link>https://example.com/chip</link>
       <dc:date>2026-11-02T20:00:00+00:00</dc:date>
     </item>
+    <item>
+      <title>Last 48 hours to save up to $600 on TechCrunch Disrupt 2026 passes</title>
+      <link>https://example.com/promo</link>
+      <pubDate>Tue, 03 Nov 2026 00:30:00 +0000</pubDate>
+      <description>Register now before prices go up.</description>
+    </item>
   </channel>
 </rss>

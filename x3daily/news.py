@@ -16,6 +16,38 @@ log = logging.getLogger(__name__)
 
 ATOM = "{http://www.w3.org/2005/Atom}"
 
+# Promotional / event-sales posts that feeds mix in with news. The sleep screen only fits
+# ~3 headlines, so one ad costs a third of it. Bare "event" or "conference" is deliberately
+# absent: real news uses them too.
+PROMO_KEYWORDS = (
+    "TechCrunch Disrupt", "TC Disrupt", "StrictlyVC", "TC Sessions", "TC All Stage",
+    "tickets", "save $", "save up to", "register now", "early bird", "early-bird",
+    "sponsored", "partner content", "webinar", "giveaway", "% off",
+    "promo code", "discount code",
+)
+
+
+def _keyword_re(words):
+    # Boundaries only on edges that are word characters, so "save $" still matches
+    # "save $200" and "% off" matches "20% off". A hyphen before the keyword blocks
+    # the match so "state-sponsored hackers" stays news.
+    parts = []
+    for w in words:
+        pat = re.escape(w).replace(r"\ ", r"\s+")
+        if re.match(r"\w", w):
+            pat = r"(?<![\w-])" + pat
+        if re.search(r"\w$", w):
+            pat += r"(?!\w)"
+        parts.append(pat)
+    return re.compile("|".join(parts), re.IGNORECASE)
+
+
+_PROMO_RE = _keyword_re(PROMO_KEYWORDS)
+
+
+def is_promo(item):
+    return bool(_PROMO_RE.search(item.title) or _PROMO_RE.search(item.summary))
+
 
 @dataclass
 class Item:
@@ -86,10 +118,17 @@ def _similar(a, b):
 
 
 def select(items, now, limit=NEWS_MAX, window_hours=NEWS_WINDOW_HOURS):
-    """Newest first, only items from the last `window_hours`, without duplicate links or titles."""
+    """Newest first, only items from the last `window_hours`, without ads or duplicate links/titles."""
     cutoff = now - timedelta(hours=window_hours)
-    fresh = sorted((i for i in items if cutoff <= i.published <= now + timedelta(hours=1)),
-                   key=lambda i: i.published, reverse=True)
+    fresh = []
+    for i in items:
+        if not cutoff <= i.published <= now + timedelta(hours=1):
+            continue
+        if is_promo(i):
+            log.info("news: promo dropped: %s", i.title)
+            continue
+        fresh.append(i)
+    fresh.sort(key=lambda i: i.published, reverse=True)
     chosen = []
     for it in fresh:
         if any(it.link == c.link or _similar(it.title, c.title) for c in chosen):
