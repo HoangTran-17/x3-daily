@@ -9,6 +9,9 @@ USER_AGENT = "x3-daily/1.0 (+https://github.com/HoangTran-17/x3-daily)"
 HTTP_TIMEOUT = 20
 
 DEFAULT_BASE_URL = "https://hoangtran-17.github.io/x3-daily/"
+# X3 cannot do the TLS handshake with github.io; it reads the `device` branch through the contents API.
+DEFAULT_DEVICE_BASE_URL = "https://api.github.com/repos/HoangTran-17/x3-daily/contents/"
+DEVICE_HREF_SUFFIX = "?ref=device"
 
 GOLD_CSV = ROOT / "data" / "gold.csv"
 QUOTES_FILE = ROOT / "quotes.txt"

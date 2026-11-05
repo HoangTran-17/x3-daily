@@ -142,6 +142,12 @@ Câu danh nhân do tự diễn đạt lại tiếng Việt, nguồn gốc câu n
 2. Thêm server mới, URL: `https://hoangtran-17.github.io/x3-daily/opds.xml`.
 3. Mở feed, chọn "Báo sáng dd/mm/yyyy", tải về.
 
+Máy X3 không bắt tay TLS được với github.io, nên workflow còn đẩy `_site` lên branch `device` và máy đọc qua contents API (firmware tự gửi `Accept: application/vnd.github.raw`):
+
+- Feed: `https://api.github.com/repos/HoangTran-17/x3-daily/contents/opds-api.xml?ref=device`
+- Brief: `https://api.github.com/repos/HoangTran-17/x3-daily/contents/brief.json?ref=device`
+- Base đổi được bằng env `DEVICE_BASE_URL`.
+
 (Tên menu trên firmware có thể khác. Chưa thử trên máy thật.)
 
 ## Lịch chạy

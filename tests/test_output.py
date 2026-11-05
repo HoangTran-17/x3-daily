@@ -115,6 +115,20 @@ def test_opds_feed_is_valid_and_keeps_seven(tmp_path):
     assert any(l.get("rel") == "self" for l in root.findall("a:link", ns))
 
 
+def test_opds_api_feed_uses_suffix_and_self_name(tmp_path):
+    _touch_issues(tmp_path, range(1, 4))
+    names = opds.prune(tmp_path, keep=7)
+    api = "https://api.github.com/repos/o/r/contents/"
+    root = ET.fromstring(opds.build_feed(api, tmp_path, names, NOW, "?ref=device", "opds-api.xml"))
+    ns = {"a": "http://www.w3.org/2005/Atom"}
+    hrefs = [l.get("href") for l in root.iter("{http://www.w3.org/2005/Atom}link")]
+    assert api + "bao-sang-20261103.epub?ref=device" in hrefs
+    assert [l.get("href") for l in root.findall("a:link", ns) if l.get("rel") == "self"] == [api + "opds-api.xml?ref=device"]
+    old = ET.fromstring(opds.build_feed(BASE, tmp_path, names, NOW))
+    assert BASE + "opds.xml" in [l.get("href") for l in old.findall("a:link", ns)]
+    assert not any("?ref" in (l.get("href") or "") for l in old.iter("{http://www.w3.org/2005/Atom}link"))
+
+
 def test_restore_previous_only_downloads_valid_names_from_base_url(tmp_path):
     feed = ('<feed xmlns="http://www.w3.org/2005/Atom">'
             '<entry><link rel="x" href="https://other.example/bao-sang-20261101.epub"/></entry>'
@@ -199,6 +213,7 @@ def test_end_to_end_calendar_only_in_private_brief(sandbox, monkeypatch, caplog)
 
     assert (site / "bao-sang-20261103.epub").exists()
     assert ET.parse(site / "opds.xml").getroot().tag.endswith("feed")
+    assert b"contents/bao-sang-20261103.epub?ref=device" in (site / "opds-api.xml").read_bytes()
     assert (sandbox / "gold.csv").read_text(encoding="utf-8").splitlines()[-1] == "2026-11-03,13490,13890"
 
 

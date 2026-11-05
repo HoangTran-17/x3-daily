@@ -96,6 +96,18 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+      - name: Publish site to orphan branch device (for X3 via contents API)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm -rf "$RUNNER_TEMP/device" && cp -r _site "$RUNNER_TEMP/device"
+          cd "$RUNNER_TEMP/device"
+          git init -q -b device
+          git config user.name "x3-daily bot"
+          git config user.email "x3-daily-bot@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Bản tin $(TZ=Asia/Ho_Chi_Minh date +%F)"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" device
       - name: Update secret gist with calendar brief (optional)
         # The calendar brief stays out of every artifact; it only leaves the runner via the gist API.
         # continue-on-error: a gist failure must not block today's public Pages deploy.

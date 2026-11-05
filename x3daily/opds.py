@@ -56,8 +56,9 @@ def prune(site_dir, keep=EPUB_KEEP):
     return names[:keep]
 
 
-def build_feed(base_url, site_dir, names, now):
+def build_feed(base_url, site_dir, names, now, href_suffix="", feed_name="opds.xml"):
     updated = now.isoformat(timespec="seconds")
+    feed_href = base_url + feed_name + href_suffix
     entries = ""
     for n in names:
         d = issue_date(n)
@@ -68,7 +69,7 @@ def build_feed(base_url, site_dir, names, now):
             "<link rel=\"http://opds-spec.org/acquisition\" href=%s type=\"application/epub+zip\" length=\"%d\"/>"
             "</entry>"
         ) % (d.day, d.month, d.year, uuid.uuid5(uuid.NAMESPACE_URL, "x3-daily/" + n), d.isoformat(),
-             quoteattr(base_url + n), size)
+             quoteattr(base_url + n + href_suffix), size)
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/terms/" '
@@ -78,4 +79,4 @@ def build_feed(base_url, site_dir, names, now):
         '<link rel="self" href=%s type="application/atom+xml;profile=opds-catalog;kind=acquisition"/>'
         '<link rel="start" href=%s type="application/atom+xml;profile=opds-catalog;kind=acquisition"/>'
         "%s</feed>\n"
-    ) % (escape(updated), quoteattr(base_url + "opds.xml"), quoteattr(base_url + "opds.xml"), entries)
+    ) % (escape(updated), quoteattr(feed_href), quoteattr(feed_href), entries)

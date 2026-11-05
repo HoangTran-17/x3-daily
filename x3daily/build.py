@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 
 from . import brief, calendar_ics, epub, gold, news, opds, quotes, weather
-from .config import DEFAULT_BASE_URL, GOLD_CSV, PRIVATE_DIR, QUOTES_FILE, SITE_DIR, VN, WORK_DIR
+from .config import DEFAULT_BASE_URL, DEFAULT_DEVICE_BASE_URL, DEVICE_HREF_SUFFIX, GOLD_CSV, PRIVATE_DIR, QUOTES_FILE, SITE_DIR, VN, WORK_DIR
 
 log = logging.getLogger("x3daily")
 
@@ -109,6 +109,11 @@ def build_epub(now, wx, price, hist, block, items, quote, base_url):
     opds.restore_previous(base_url, SITE_DIR)
     names = opds.prune(SITE_DIR)
     (SITE_DIR / "opds.xml").write_text(opds.build_feed(base_url, SITE_DIR, names, now), encoding="utf-8")
+    device_base = os.environ.get("DEVICE_BASE_URL", DEFAULT_DEVICE_BASE_URL)
+    if not device_base.endswith("/"):
+        device_base += "/"
+    (SITE_DIR / "opds-api.xml").write_text(
+        opds.build_feed(device_base, SITE_DIR, names, now, DEVICE_HREF_SUFFIX, "opds-api.xml"), encoding="utf-8")
     log.info("opds: %d issues", len(names))
 
 
