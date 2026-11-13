@@ -32,6 +32,7 @@ Soạn bản tin mỗi sáng cho máy đọc sách Xteink X3 bằng GitHub Actio
 python -m x3daily collect-news   # ghi work/news.json (tuỳ chọn, build tự lấy nếu thiếu)
 python -m x3daily translate-news # cần env GOOGLE_API_KEY; ghi work/news_vi.json
 python -m x3daily build          # ghi _site/ và cập nhật data/gold.csv
+python -m x3daily backfill-gold  # thêm ngày còn thiếu vào data/gold.csv từ API lịch sử PNJ
 python -m pytest -q              # test offline
 ```
 
@@ -118,13 +119,16 @@ không vào Pages. Build ghi nó ra `out-private/brief.json` (ngoài `_site/`), 
 - Đơn vị gốc: nghìn đồng/chỉ. Đổi sang triệu đồng/lượng: `13490 → "134,9"`.
 - Rủi ro: API này không có tài liệu chính thức. Nó có thể đổi. Khi lỗi, bản tin bỏ ô vàng.
 - Lịch sử: Actions ghi 1 dòng mỗi ngày vào `data/gold.csv` (`date,buy,sell`, nghìn đồng/chỉ). % tính theo giá **bán ra**.
-  - 1 tháng = 30 ngày trước, 3 tháng = 91 ngày, 1 năm = 365 ngày.
-  - Lấy bản ghi mới nhất ≤ ngày mục tiêu, cũ hơn tối đa 7 ngày. Không có thì bỏ field `d1m`/`d3m`/`d1y` đó.
-  - Nghĩa là `d1m` chỉ xuất hiện sau ~30 ngày chạy, `d3m` sau ~3 tháng, `d1y` sau ~1 năm.
-- **Không có script backfill.** Đã tìm nguồn lịch sử miễn phí cho nhẫn 9999 mà không cần key:
-  - PNJ: tham số `date` bị bỏ qua, không có endpoint lịch sử.
-  - webgia.com chỉ có biểu đồ lịch sử cho SJC miếng, không phải nhẫn 9999. Trộn hai loại sẽ cho % sai.
-  - Nếu bạn có file giá lịch sử nhẫn 9999, chỉ cần thêm dòng vào `data/gold.csv` (cùng định dạng), % sẽ tự tính.
+  - `brief.json`: 1 tháng = 30 ngày trước, 3 tháng = 91 ngày, 1 năm = 365 ngày (field `d1m`/`d3m`/`d1y`).
+  - EPUB: hôm nay + 1 tuần (7 ngày), 1 tháng, 3 tháng, 6 tháng (182 ngày), 12 tháng. Mỗi mốc ghi ngày, giá mua/bán, chênh lệch giá bán (tr/lượng và %).
+  - Lấy bản ghi mới nhất ≤ ngày mục tiêu, cũ hơn tối đa 7 ngày (mốc 1 tuần: tối đa 2 ngày, để không lấy giá 14 ngày trước làm "1 tuần").
+  - Không có bản ghi: `brief.json` bỏ field đó; EPUB ghi "chưa có".
+- Nguồn của từng dòng `data/gold.csv`:
+  - Từ 2026-11-03: Actions ghi giá N24K lúc chạy (~04:10, có hôm chạy trễ). Lúc 04:10 PNJ thường chưa cập nhật, nên giá là giá cuối của ngày hôm trước.
+  - Trước 2026-11-03 (2025-11-06 → 2026-11-02, nạp ngược 13/11/2026): `https://edge-api.pnj.io/ecom-frontend/v1/get-gold-price-history?zone=00&date=YYYYMMDD`, sản phẩm "Nhẫn Trơn PNJ 999.9" (cùng tên `tensp` của N24K), lấy bản ghi cuối trong ngày.
+  - Endpoint lịch sử không có tài liệu. Đơn vị: nghìn đồng/lượng, chuỗi `"137.400"` (dấu chấm ngăn nghìn) → chia 10 thành nghìn đồng/chỉ.
+  - Ngày không có dữ liệu (chủ nhật, Tết, lễ) không có dòng.
+- Nạp ngược lại / lấp ngày thiếu: `python -m x3daily backfill-gold --days 372`. Lệnh chỉ thêm ngày còn thiếu, không ghi đè dòng có sẵn.
 
 ### Thời tiết
 

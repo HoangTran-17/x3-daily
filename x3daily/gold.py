@@ -2,12 +2,13 @@
 import csv
 import json
 import logging
+import time
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from . import net
-from .config import GOLD_PERIODS, GOLD_TOLERANCE_DAYS, PNJ_RING_CODE, PNJ_URL
+from .config import GOLD_PERIODS, GOLD_TOLERANCE_DAYS, PNJ_HISTORY_URL, PNJ_RING_CODE, PNJ_RING_NAME, PNJ_URL
 from .vi import fmt_decimal, fmt_percent
 
 log = logging.getLogger(__name__)
@@ -29,6 +30,55 @@ def parse_pnj(raw):
 
 def fetch_price():
     return parse_pnj(net.get(PNJ_URL))
+
+
+def _k_per_chi(luong_text):
+    """'137.400' (thousand VND per luong, dot = thousands separator) -> 13740 (thousand VND per chi)."""
+    n = int(str(luong_text).replace(".", ""))
+    if n <= 0 or n % 10:
+        raise ValueError("unexpected price")
+    return n // 10
+
+
+def parse_pnj_history(raw):
+    """Last price of the day for PNJ_RING_NAME from get-gold-price-history, or None (Sundays, holidays)."""
+    best = None
+    for loc in json.loads(raw).get("locations") or []:
+        for gt in loc.get("gold_type") or []:
+            if gt.get("name") != PNJ_RING_NAME:
+                continue
+            for row in gt.get("data") or []:
+                try:
+                    at = datetime.strptime(row["updated_at"], "%d/%m/%Y %H:%M:%S")
+                    p = Price(buy=_k_per_chi(row["gia_mua"]), sell=_k_per_chi(row["gia_ban"]))
+                except (KeyError, TypeError, ValueError):
+                    continue
+                if best is None or at > best[0]:
+                    best = (at, p)
+    return best[1] if best else None
+
+
+def backfill(hist, start, end, get=None, pause=0.2):
+    """Add missing dates in [start, end] from the PNJ history endpoint. Existing rows are never replaced.
+
+    Returns the number of rows added. A failing day is skipped.
+    """
+    added = 0
+    d = start
+    while d <= end:
+        if d not in hist:
+            try:
+                p = parse_pnj_history((get or net.get)(PNJ_HISTORY_URL.format(ymd=d.strftime("%Y%m%d"))))
+            except Exception as e:
+                log.warning("gold backfill %s: skipped (%s)", d, type(e).__name__)
+                p = None
+            if p:
+                hist[d] = p
+                added += 1
+            if pause:
+                time.sleep(pause)
+        d += timedelta(days=1)
+    return added
 
 
 def to_million_per_luong(k_per_chi):
@@ -58,19 +108,24 @@ def save_history(path, hist):
             w.writerow([d.isoformat(), hist[d].buy, hist[d].sell])
 
 
-def change_vs(hist, today, days, current_sell):
-    """Percent change of the sell price against the record `days` ago, or None.
-
-    Uses the newest record on or before the target date, at most GOLD_TOLERANCE_DAYS older.
-    """
+def reference(hist, today, days, tolerance=GOLD_TOLERANCE_DAYS):
+    """(date, Price) of the newest record on or before `days` ago, at most `tolerance` days older; else None."""
     target = today - timedelta(days=days)
     older = [d for d in hist if d <= target]
     if not older:
         return None
     ref = max(older)
-    if (target - ref).days > GOLD_TOLERANCE_DAYS or hist[ref].sell <= 0:
+    if (target - ref).days > tolerance or hist[ref].sell <= 0:
         return None
-    return fmt_percent((Decimal(current_sell) - hist[ref].sell) / hist[ref].sell)
+    return ref, hist[ref]
+
+
+def change_vs(hist, today, days, current_sell, tolerance=GOLD_TOLERANCE_DAYS):
+    """Percent change of the sell price against the record `days` ago, or None."""
+    ref = reference(hist, today, days, tolerance)
+    if ref is None:
+        return None
+    return fmt_percent((Decimal(current_sell) - ref[1].sell) / ref[1].sell)
 
 
 def gold_block(price, hist, today):

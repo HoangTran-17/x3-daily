@@ -21,6 +21,13 @@ def fmt_percent(ratio, places=1):
     return text + "%"
 
 
+def fmt_signed(value, places=1):
+    """Signed decimal: -2.9 -> '-2,9', 1.25 -> '+1,3', 0 -> '0,0'."""
+    d = Decimal(str(value)).quantize(Decimal(1).scaleb(-places), rounding=ROUND_HALF_UP)
+    text = fmt_decimal(abs(d), places)
+    return ("+" if d > 0 else "-" if d < 0 else "") + text
+
+
 def fmt_thousands(n):
     """13490 -> '13.490'."""
     return f"{int(n):,}".replace(",", ".")

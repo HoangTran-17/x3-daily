@@ -6,7 +6,7 @@ import os
 import shutil
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from . import brief, calendar_ics, epub, gold, news, opds, quotes, translate, weather
 from .config import DEFAULT_BASE_URL, DEFAULT_DEVICE_BASE_URL, DEVICE_HREF_SUFFIX, GOLD_CSV, PRIVATE_DIR, QUOTES_FILE, SITE_DIR, VN, WORK_DIR
@@ -119,10 +119,17 @@ def build_epub(now, wx, price, hist, block, items, quote, base_url):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="x3daily")
-    ap.add_argument("command", choices=["collect-news", "translate-news", "build"])
+    ap.add_argument("command", choices=["collect-news", "translate-news", "build", "backfill-gold"])
+    ap.add_argument("--days", type=int, default=372, help="backfill-gold: days back from today")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     now = datetime.now(VN)
     if args.command == "translate-news":
         sys.exit(translate.run(WORK_DIR))
+    if args.command == "backfill-gold":
+        hist = gold.load_history(GOLD_CSV)
+        added = gold.backfill(hist, now.date() - timedelta(days=args.days), now.date() - timedelta(days=1))
+        gold.save_history(GOLD_CSV, hist)
+        log.info("gold backfill: %d rows added", added)
+        return
     {"collect-news": collect_news, "build": build}[args.command](now)

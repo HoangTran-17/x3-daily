@@ -8,9 +8,9 @@ import uuid
 import zipfile
 from xml.sax.saxutils import escape, quoteattr
 
-from .config import GOLD_TABLE_DAYS
-from .gold import to_million_per_luong
-from .vi import fmt_date_long, fmt_decimal
+from .config import GOLD_EPUB_PERIODS, GOLD_TABLE_DAYS
+from .gold import change_vs, reference, to_million_per_luong
+from .vi import fmt_date_long, fmt_decimal, fmt_signed
 
 CSS = "body{line-height:1.5}h1{font-size:1.4em}h2{font-size:1.15em}p{margin:0.4em 0}.small{font-size:0.85em}"
 
@@ -38,12 +38,21 @@ def _gold_page(day, price, hist, block):
     body = "<h1>Giá vàng nhẫn 9999</h1>"
     if price:
         body += "<p>Hôm nay: mua <b>%s</b>, bán <b>%s</b> (triệu đồng/lượng).</p>" % (block["buy"], block["sell"])
-        chg = [("1 tháng", "d1m"), ("3 tháng", "d3m"), ("1 năm", "d1y")]
-        parts = ["%s %s" % (label, block[k]) for label, k in chg if k in block]
-        if parts:
-            body += "<p>So với: %s.</p>" % escape("; ".join(parts))
     else:
         body += "<p>Không có giá hôm nay.</p>"
+    body += "<h2>So với trước</h2>"
+    for label, days, tol in GOLD_EPUB_PERIODS:
+        ref = reference(hist, day, days, tol)
+        if ref is None:
+            body += "<p>%s trước: chưa có</p>" % escape(label)
+            continue
+        d, p = ref
+        line = "%s trước (%02d/%02d/%d): mua %s, bán %s" % (
+            label, d.day, d.month, d.year, fmt_decimal(to_million_per_luong(p.buy)), fmt_decimal(to_million_per_luong(p.sell)))
+        if price:
+            line += "; bán ra %s (%s)" % (fmt_signed(to_million_per_luong(price.sell - p.sell)),
+                                          change_vs(hist, day, days, price.sell, tol))
+        body += "<p>%s</p>" % escape(line)
     rows = sorted((d for d in hist if (day - d).days < GOLD_TABLE_DAYS and d <= day), reverse=True)
     if rows:
         body += "<h2>%d ngày gần nhất</h2>" % GOLD_TABLE_DAYS

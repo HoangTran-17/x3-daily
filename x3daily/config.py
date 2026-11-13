@@ -23,6 +23,9 @@ PRIVATE_DIR = ROOT / "out-private"
 # PNJ public JSON, zone 00 = TP.HCM. Product code N24K = "Nhan Tron PNJ 999.9".
 PNJ_URL = "https://edge-api.pnj.io/ecom-frontend/v1/get-gold-price?zone=00"
 PNJ_RING_CODE = "N24K"
+# Undocumented PNJ endpoint found 13/11/2026; date=YYYYMMDD, prices as "137.400" (thousand VND per luong).
+PNJ_HISTORY_URL = "https://edge-api.pnj.io/ecom-frontend/v1/get-gold-price-history?zone=00&date={ymd}"
+PNJ_RING_NAME = "Nhẫn Trơn PNJ 999.9"  # same product as N24K (tensp)
 
 CITIES = [
     {"name": "TP.HCM", "lat": 10.8231, "lon": 106.6297},
@@ -55,7 +58,10 @@ BRIEF_MAX_BYTES = 4096  # firmware reads up to 8 KB; keep headroom
 EVENT_TITLE_MAX = 60
 EVENTS_MAX = 6
 
-GOLD_PERIODS = {"d1m": 30, "d3m": 91, "d1y": 365}  # days back
+GOLD_PERIODS = {"d1m": 30, "d3m": 91, "d1y": 365}  # brief.json keys known by the firmware: days back
 GOLD_TOLERANCE_DAYS = 7  # a reference record may be up to this many days older than the target
+# EPUB comparison points: (label, days back, tolerance). 1 week uses 2 days: with 7 a record
+# from 14 days ago would be shown as "1 week"; 2 still covers Sundays and one missed run.
+GOLD_EPUB_PERIODS = [("1 tuần", 7, 2), ("1 tháng", 30, 7), ("3 tháng", 91, 7), ("6 tháng", 182, 7), ("12 tháng", 365, 7)]
 GOLD_TABLE_DAYS = 30
 EPUB_KEEP = 7
