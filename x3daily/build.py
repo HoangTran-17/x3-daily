@@ -8,7 +8,7 @@ import subprocess
 import sys
 from datetime import datetime
 
-from . import brief, calendar_ics, epub, gold, news, opds, quotes, weather
+from . import brief, calendar_ics, epub, gold, news, opds, quotes, translate, weather
 from .config import DEFAULT_BASE_URL, DEFAULT_DEVICE_BASE_URL, DEVICE_HREF_SUFFIX, GOLD_CSV, PRIVATE_DIR, QUOTES_FILE, SITE_DIR, VN, WORK_DIR
 
 log = logging.getLogger("x3daily")
@@ -36,7 +36,7 @@ def _load_news(now):
             vi = json.loads(vi_path.read_text(encoding="utf-8"))
         except Exception:
             log.warning("news: news_vi.json is not valid JSON, using original titles")
-    return list(zip(items, *zip(*news.apply_vi(items, vi)))) if items else []
+    return [(it, *vi_item) for it, vi_item in zip(items, news.apply_vi(items, vi))]
 
 
 def _run_x3book(raw, out):
@@ -74,14 +74,14 @@ def build(now):
     items = _load_news(now)
     quote = quotes.pick(quotes.load(QUOTES_FILE), today)
 
-    full = brief.build_brief(now, wx, block, [t for _, t, _ in items], quote)
+    full = brief.build_brief(now, wx, block, [t for _, t, _, _ in items], quote)
     public = brief.public_version(full)
     (SITE_DIR / "brief.json").write_bytes(brief.fit(public))
 
     ics_url = os.environ.get("GCAL_ICS_URL", "").strip()
     if ics_url:
         events = calendar_ics.fetch_events(ics_url, today)
-        full = brief.build_brief(now, wx, block, [t for _, t, _ in items], quote, events)
+        full = brief.build_brief(now, wx, block, [t for _, t, _, _ in items], quote, events)
         # Written even with no events so the gist never keeps yesterday's calendar.
         PRIVATE_DIR.mkdir()
         (PRIVATE_DIR / "brief.json").write_bytes(brief.fit(full))
@@ -119,8 +119,10 @@ def build_epub(now, wx, price, hist, block, items, quote, base_url):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="x3daily")
-    ap.add_argument("command", choices=["collect-news", "build"])
+    ap.add_argument("command", choices=["collect-news", "translate-news", "build"])
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     now = datetime.now(VN)
+    if args.command == "translate-news":
+        sys.exit(translate.run(WORK_DIR))
     {"collect-news": collect_news, "build": build}[args.command](now)

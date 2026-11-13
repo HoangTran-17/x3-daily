@@ -151,7 +151,7 @@ def collect(now):
 
 
 def dump_raw(items):
-    """JSON handed to the optional Claude step: index + English text only."""
+    """JSON handed to the optional translation step: index + English text only."""
     return json.dumps([{"i": n, "title": it.title, "summary": it.summary, "source": it.source}
                        for n, it in enumerate(items)], ensure_ascii=False, indent=1)
 
@@ -168,10 +168,11 @@ def load_items(path):
 
 
 def apply_vi(items, vi_data):
-    """Merge optional Claude output [{"i": int, "t": str, "s": str}] into items as (title, summary) pairs.
+    """Merge optional translation output [{"i": int, "t": str, "s": str}] into items as
+    (title, summary, translated) triples.
 
-    The Claude output is untrusted data: wrong types are ignored, lengths are capped,
-    and a bad entry falls back to the original English text.
+    The output (Gemini or Claude) is untrusted data: wrong types are ignored, lengths are capped,
+    and a bad entry falls back to the original English text with translated=False.
     """
     by_i = {}
     if isinstance(vi_data, list):
@@ -181,9 +182,12 @@ def apply_vi(items, vi_data):
     out = []
     for n, it in enumerate(items):
         e = by_i.get(n, {})
-        t = e.get("t") if isinstance(e.get("t"), str) and e["t"].strip() else it.title
-        s = e.get("s") if isinstance(e.get("s"), str) and e["s"].strip() else it.summary
-        out.append((truncate(_clean(t), NEWS_TITLE_MAX), truncate(_clean(s), NEWS_SUMMARY_MAX)))
+        ok_t = isinstance(e.get("t"), str) and bool(e["t"].strip())
+        ok_s = isinstance(e.get("s"), str) and bool(e["s"].strip())
+        t = e["t"] if ok_t else it.title
+        s = e["s"] if ok_s else it.summary
+        translated = ok_t and (ok_s or not it.summary)
+        out.append((truncate(_clean(t), NEWS_TITLE_MAX), truncate(_clean(s), NEWS_SUMMARY_MAX), translated))
     return out
 
 

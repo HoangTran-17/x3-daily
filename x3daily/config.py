@@ -46,6 +46,11 @@ NEWS_WINDOW_HOURS = 24
 NEWS_TITLE_MAX = 90
 NEWS_SUMMARY_MAX = 300
 
+# Optional translation (secret GOOGLE_API_KEY). Free tier of the Gemini API needs no billing.
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+GEMINI_MODEL = "gemini-3.5-flash-lite"
+GEMINI_TIMEOUT = 60
+
 BRIEF_MAX_BYTES = 4096  # firmware reads up to 8 KB; keep headroom
 EVENT_TITLE_MAX = 60
 EVENTS_MAX = 6

@@ -59,7 +59,7 @@ def _make_epub(path):
     hist = {date(2026, 11, 2): gold.Price(13400, 13800), date(2026, 11, 3): gold.Price(13490, 13890)}
     block = gold.gold_block(hist[date(2026, 11, 3)], hist, date(2026, 11, 3))
     epub.build(path, date(2026, 11, 3), [{"city": "TP.HCM", "now": "Mưa rào", "range": "25–32°"}],
-               hist[date(2026, 11, 3)], hist, block, [(i, i.title, i.summary) for i in items],
+               hist[date(2026, 11, 3)], hist, block, [(i, i.title, i.summary, False) for i in items],
                {"text": "Nước chảy đá mòn.", "by": "Tục ngữ"})
 
 

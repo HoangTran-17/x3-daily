@@ -22,12 +22,15 @@ Soạn bản tin mỗi sáng cho máy đọc sách Xteink X3 bằng GitHub Actio
 | `x3daily/brief.py` | Ghép `brief.json`, ép ≤4 KB, bản công khai không có `events` |
 | `x3daily/epub.py`, `opds.py` | Báo sáng EPUB + feed OPDS tĩnh |
 | `x3daily/build.py` | Điều phối (`python -m x3daily build`) |
-| `prompts/news_summary.md` | Prompt cho bước Claude (tuỳ chọn) |
+| `x3daily/translate.py` | Dịch tin AI sang tiếng Việt bằng Gemini API (tuỳ chọn, `python -m x3daily translate-news`) |
+| `prompts/news_translate.md` | Prompt cho bước Gemini |
+| `prompts/news_summary.md` | Prompt cho bước Claude (tuỳ chọn, dự phòng) |
 
 ## Chạy thử ở máy local
 
 ```
 python -m x3daily collect-news   # ghi work/news.json (tuỳ chọn, build tự lấy nếu thiếu)
+python -m x3daily translate-news # cần env GOOGLE_API_KEY; ghi work/news_vi.json
 python -m x3daily build          # ghi _site/ và cập nhật data/gold.csv
 python -m pytest -q              # test offline
 ```
@@ -46,12 +49,22 @@ python -m pytest -q              # test offline
 
 | Secret | Dùng để | Thiếu thì |
 |---|---|---|
-| `CLAUDE_CODE_OAUTH_TOKEN` | Claude dịch/tóm tắt tin AI sang tiếng Việt | Dùng tiêu đề tiếng Anh gốc |
+| `GOOGLE_API_KEY` | Gemini dịch/tóm tắt tin AI sang tiếng Việt | Tin giữ tiếng Anh, EPUB ghi "(chưa dịch)" |
+| `CLAUDE_CODE_OAUTH_TOKEN` | Claude dịch, chỉ chạy khi bước Gemini không thành công | Như trên |
 | `GCAL_ICS_URL` | Link ICS bí mật của Google Calendar | Không có ô lịch |
 | `GIST_TOKEN` | PAT chỉ có quyền gist, để ghi bản có lịch | Không có ô lịch |
 | `GIST_ID` | ID của secret gist chứa bản có lịch | Không có ô lịch |
 
 5. Chạy tay lần đầu: **Actions → Bản tin hằng ngày → Run workflow**.
+
+### Tạo `GOOGLE_API_KEY` (Gemini API, free tier)
+
+- Tạo key ở Google AI Studio bằng account Google cá nhân. Free tier không cần bật billing.
+- Model mặc định `gemini-3.5-flash-lite` (đổi bằng repo variable `GEMINI_MODEL`: Settings → Secrets and variables → Actions → Variables). Mỗi ngày 1 request cho cả 5 tin.
+- Free tier: Google có thể dùng nội dung gửi lên để cải thiện sản phẩm. Nội dung gửi đi chỉ là tin RSS công khai.
+- Key chỉ gửi trong header `x-goog-api-key`. Log chỉ in mã HTTP khi lỗi (429 = hết quota, 400/403 = key sai).
+- Bước lỗi thì exit 1, workflow vẫn tiếp tục (`continue-on-error`). Khi đó bước Claude chạy nếu có token.
+- Tin không dịch được: EPUB ghi "(chưa dịch)" cạnh tiêu đề. `brief.json` vẫn dùng tiêu đề gốc.
 
 ### Tạo `CLAUDE_CODE_OAUTH_TOKEN`
 
@@ -153,7 +166,7 @@ Máy X3 không bắt tay TLS được với github.io, nên workflow còn đẩy
 ## Lịch chạy
 
 - Cron `10 21 * * *` UTC = 04:10 giờ VN. GitHub có thể trễ vài phút đến vài chục phút giờ cao điểm.
-- Workflow 3 job: `news` (đọc RSS, Claude tuỳ chọn) → `build` (ghi site, commit `gold.csv`) → `deploy` (Pages).
+- Workflow 3 job: `news` (đọc RSS, Gemini tuỳ chọn, Claude dự phòng) → `build` (ghi site, commit `gold.csv`) → `deploy` (Pages).
 - Workflow `tests.yml` chạy pytest khi push/PR. Test `x3book check` tự bỏ qua nếu chưa cài x3book.
 
 ## License

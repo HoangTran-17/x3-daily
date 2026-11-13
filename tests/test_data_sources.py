@@ -174,8 +174,10 @@ def test_apply_vi_is_defensive():
     out = news.apply_vi([it, it], [{"i": 0, "t": "Tiêu đề " + "x" * 200, "s": 5}, {"i": "1", "t": "bad"}, "junk"])
     assert len(out[0][0]) == 90 and out[0][0].endswith("…")
     assert out[0][1] == "Original summary"  # non-string summary ignored
-    assert out[1] == ("Original title", "Original summary")
-    assert news.apply_vi([it], None) == [("Original title", "Original summary")]
+    assert out[0][2] is False  # English summary left -> not counted as translated
+    assert out[1] == ("Original title", "Original summary", False)
+    assert news.apply_vi([it], None) == [("Original title", "Original summary", False)]
+    assert news.apply_vi([it], [{"i": 0, "t": "Tiêu đề", "s": "Tóm tắt"}]) == [("Tiêu đề", "Tóm tắt", True)]
     assert "\n" not in news.apply_vi([it], [{"i": 0, "t": "a\nb", "s": "c"}])[0][0]
 
 

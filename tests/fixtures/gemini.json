@@ -1,0 +1,13 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          {"text": "[{\"i\": 0, \"t\": \"Google ra mắt mô hình AI mới cho nhà phát triển\", \"s\": \"Google công bố mô hình mới, chạy nhanh hơn và rẻ hơn bản trước.\"}, {\"i\": 1, \"t\": \"Nghiên cứu mới về an toàn AI\", \"s\": \"Nhóm nghiên cứu đề xuất cách kiểm tra mô hình trước khi phát hành.\"}, {\"i\": \"x\", \"t\": \"bỏ qua\"}]"}
+        ]
+      },
+      "finishReason": "STOP"
+    }
+  ]
+}

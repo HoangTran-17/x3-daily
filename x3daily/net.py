@@ -1,4 +1,5 @@
-"""Read-only HTTP GET helper. The project never sends anything except GET requests."""
+"""Read-only HTTP GET helper. The only non-GET request in the project is the optional
+translation POST in translate.py (sends public RSS text only)."""
 import urllib.request
 
 from .config import HTTP_TIMEOUT, USER_AGENT

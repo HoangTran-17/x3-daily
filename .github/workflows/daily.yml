@@ -13,12 +13,13 @@ permissions: {}
 
 jobs:
   news:
-    # Collect RSS and (optionally) summarize with Claude. No write permission here:
+    # Collect RSS and (optionally) translate with Gemini, Claude as fallback. No write permission here:
     # RSS text is untrusted input for the model.
     runs-on: ubuntu-latest
     permissions:
       contents: read
     env:
+      HAS_GOOGLE: ${{ secrets.GOOGLE_API_KEY != '' }}
       HAS_CLAUDE: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
@@ -29,9 +30,17 @@ jobs:
           python-version: "3.12"
       - name: Collect news
         run: python -m x3daily collect-news
-      - name: Summarize in Vietnamese with Claude (optional)
+      - name: Translate to Vietnamese with Gemini (optional)
+        id: gemini
+        if: env.HAS_GOOGLE == 'true'
+        continue-on-error: true
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }} # optional repo variable; empty = default in config.py
+        run: python -m x3daily translate-news
+      - name: Summarize in Vietnamese with Claude (optional, only when Gemini did not succeed)
         id: claude
-        if: env.HAS_CLAUDE == 'true'
+        if: env.HAS_CLAUDE == 'true' && steps.gemini.outcome != 'success'
         continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:

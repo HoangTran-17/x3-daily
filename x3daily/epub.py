@@ -58,8 +58,8 @@ def _news_page(news):
     body = "<h1>Tin AI</h1>"
     if not news:
         body += "<p>Không có tin mới trong 24 giờ qua.</p>"
-    for item, title, summary in news:
-        body += "<h2>%s</h2>" % escape(title)
+    for item, title, summary, translated in news:
+        body += "<h2>%s%s</h2>" % (escape(title), "" if translated else " (chưa dịch)")
         if summary:
             body += "<p>%s</p>" % escape(summary)
         body += '<p class="small">%s. <a href=%s>%s</a></p>' % (
@@ -77,7 +77,7 @@ def _quote_page(quote):
 
 
 def build(path, day, weather, price, hist, gold_block, news, quote):
-    """Write the EPUB to `path`. `news` is a list of (Item, title, summary)."""
+    """Write the EPUB to `path`. `news` is a list of (Item, title, summary, translated)."""
     pages = [
         ("thoi-tiet.xhtml", "Thời tiết", _weather_page(day, weather)),
         ("vang.xhtml", "Giá vàng", _gold_page(day, price, hist, gold_block)),
