@@ -133,3 +133,31 @@ def test_brief_headlines_come_only_from_ai_section(tmp_path, monkeypatch):
     assert data["news"] == [{"t": "New AI model"}]
     with zipfile.ZipFile(tmp_path / "_site" / "bao-sang-20261114.epub") as z:
         assert "Lãi suất tiết kiệm giảm" in z.read("OEBPS/kinh-te-vn.xhtml").decode("utf-8")
+
+
+def test_net_get_unpacks_gzip_body_without_header(monkeypatch):
+    import gzip
+    import io
+
+    class Resp(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    body = gzip.compress(b"<rss/>")
+    monkeypatch.setattr(net.urllib.request, "urlopen", lambda req, timeout=0: Resp(body))
+    assert net.get("https://ex.com/feed") == b"<rss/>"
+    monkeypatch.setattr(net.urllib.request, "urlopen", lambda req, timeout=0: Resp(gzip.compress(b"x" * 50)))
+    try:
+        net.get("https://ex.com/feed", max_bytes=10)
+        raise AssertionError("expected FetchError")
+    except net.FetchError:
+        pass
+
+
+def test_gemini_request_requires_summary_field():
+    from x3daily import translate
+    body = json.loads(translate.build_request([{"i": 0, "title": "a"}], "k", "p").data)
+    assert body["generationConfig"]["responseSchema"]["items"]["required"] == ["i", "t", "s"]

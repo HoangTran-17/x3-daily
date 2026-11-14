@@ -18,6 +18,12 @@ log = logging.getLogger(__name__)
 PROMPT_FILE = ROOT / "prompts" / "news_translate.md"
 
 
+RESPONSE_SCHEMA = {
+    "type": "ARRAY",
+    "items": {"type": "OBJECT", "required": ["i", "t", "s"],
+              "properties": {"i": {"type": "INTEGER"}, "t": {"type": "STRING"}, "s": {"type": "STRING"}}},
+}
+
 RETRY_DELAYS = (5, 15)  # seconds before 2nd and 3rd attempt; Gemini returns 503 in bursts
 
 
@@ -40,7 +46,9 @@ def build_request(raw_items, key, prompt):
     body = {
         "systemInstruction": {"parts": [{"text": prompt}]},
         "contents": [{"role": "user", "parts": [{"text": json.dumps(raw_items, ensure_ascii=False)}]}],
-        "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
+        # The schema makes "s" required: on 14/11/2026 the model returned 8 titles with no "s" at all.
+        "generationConfig": {"responseMimeType": "application/json", "responseSchema": RESPONSE_SCHEMA,
+                             "temperature": 0.2},
     }
     return urllib.request.Request(
         GEMINI_URL.format(model=_model()), data=json.dumps(body).encode("utf-8"), method="POST",
@@ -106,5 +114,6 @@ def run(work_dir):
         log.warning("translate: failed (%s)", e if isinstance(e, TranslateError) else type(e).__name__)
         return 1
     (work_dir / "news_vi.json").write_text(json.dumps(vi, ensure_ascii=False), encoding="utf-8")
-    log.info("translate: %d of %d items translated", len(vi), len(raw_items))
+    log.info("translate: %d of %d items translated, %d without summary", len(vi), len(raw_items),
+             sum(1 for e in vi if not e["s"].strip()))
     return 0
