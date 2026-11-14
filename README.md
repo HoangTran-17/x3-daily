@@ -4,7 +4,7 @@ Soạn bản tin mỗi sáng cho máy đọc sách Xteink X3 bằng GitHub Actio
 
 ## TL;DR
 
-- `brief.json` (schema v1, ≤4 KB): firmware vẽ lên màn ngủ. Có thời tiết, giá vàng nhẫn 9999, tin AI, châm ngôn.
+- `brief.json` (schema v1, ≤4 KB): firmware vẽ lên màn ngủ. Có thời tiết, giá vàng nhẫn 9999, tin AI, châm ngôn. Tỷ giá, giá xăng và tin kinh tế chỉ có trong EPUB.
 - `bao-sang-YYYYMMDD.epub` + `opds.xml`: bản "Báo sáng" để đọc trên máy qua OPDS (giữ 7 số gần nhất).
 - Lịch Google **không** nằm trên Pages hay trong artifact nào. Bản có lịch chỉ được ghi vào 1 secret gist.
 - Pages URL dự kiến: `https://hoangtran-17.github.io/x3-daily/`
@@ -16,13 +16,14 @@ Soạn bản tin mỗi sáng cho máy đọc sách Xteink X3 bằng GitHub Actio
 |---|---|
 | `x3daily/gold.py` | Giá nhẫn 9999 (PNJ), lịch sử `data/gold.csv`, % biến động |
 | `x3daily/weather.py` | Open-Meteo: TP.HCM + Hà Tĩnh |
-| `x3daily/news.py` | RSS/Atom (`xml.etree`), lọc 24 giờ, khử trùng lặp |
+| `x3daily/news.py` | RSS/Atom (`xml.etree`) theo mục (`NEWS_SECTIONS`), lọc 24 giờ, khử trùng lặp |
+| `x3daily/fx.py`, `fuel.py` | Tỷ giá Vietcombank, giá xăng E10 RON 95-III |
 | `x3daily/quotes.py` | Châm ngôn từ `quotes.txt`, chọn theo ngày |
 | `x3daily/calendar_ics.py` | Parse ICS Google Calendar (bí mật) |
 | `x3daily/brief.py` | Ghép `brief.json`, ép ≤4 KB, bản công khai không có `events` |
 | `x3daily/epub.py`, `opds.py` | Báo sáng EPUB + feed OPDS tĩnh |
 | `x3daily/build.py` | Điều phối (`python -m x3daily build`) |
-| `x3daily/translate.py` | Dịch tin AI sang tiếng Việt bằng Gemini API (tuỳ chọn, `python -m x3daily translate-news`) |
+| `x3daily/translate.py` | Dịch tin tiếng Anh sang tiếng Việt bằng Gemini API (tuỳ chọn, `python -m x3daily translate-news`) |
 | `prompts/news_translate.md` | Prompt cho bước Gemini |
 
 ## Chạy thử ở máy local
@@ -59,7 +60,7 @@ python -m pytest -q              # test offline
 ### Tạo `GOOGLE_API_KEY` (Gemini API, free tier)
 
 - Tạo key ở Google AI Studio bằng account Google cá nhân. Free tier không cần bật billing.
-- Model mặc định `gemini-3.5-flash-lite` (đổi bằng repo variable `GEMINI_MODEL`: Settings → Secrets and variables → Actions → Variables). Mỗi ngày 1 request cho cả 5 tin.
+- Model mặc định `gemini-3.5-flash-lite` (đổi bằng repo variable `GEMINI_MODEL`: Settings → Secrets and variables → Actions → Variables). Mỗi ngày 1 request cho mọi tin tiếng Anh (tối đa 13 tin).
 - Free tier: Google có thể dùng nội dung gửi lên để cải thiện sản phẩm. Nội dung gửi đi chỉ là tin RSS công khai.
 - Key chỉ gửi trong header `x-goog-api-key`. Log chỉ in mã HTTP khi lỗi (429 = hết quota, 400/403 = key sai).
 - Bước lỗi thì exit 1, workflow vẫn tiếp tục (`continue-on-error`).
@@ -125,11 +126,33 @@ không vào Pages. Build ghi nó ra `out-private/brief.json` (ngoài `_site/`), 
 
 Open-Meteo (không key). `now` = mô tả tiếng Việt từ `weather_code`, `range` = `min–max°` (làm tròn).
 
-### Tin AI
+### Tin tức (4 mục)
 
-Nguồn (sửa trong `x3daily/config.py`): Google AI blog, MIT Technology Review (AI), TechCrunch (AI), The Verge (AI).
-Lấy tối đa 5 tin trong 24 giờ, bỏ trùng link và tiêu đề gần giống.
-Tin quảng cáo của nguồn (ví dụ vé sự kiện TechCrunch) chưa được lọc.
+Sửa nguồn và số tin trong `NEWS_SECTIONS` (`x3daily/config.py`). Mỗi mục lấy tin trong 24 giờ, bỏ trùng link và tiêu đề gần giống.
+
+| Mục | Nguồn | Số tin |
+|---|---|---|
+| Tin AI | MIT Technology Review, TechCrunch, The Verge (mục AI) | 5 |
+| Anthropic, Google | Anthropic (feed cộng đồng, xem dưới), Google AI blog, Google DeepMind blog | 5 |
+| Kinh tế Việt Nam | VnExpress Kinh doanh (tiếng Việt, không qua Gemini) | 5 |
+| Kinh tế thế giới | CNBC Economy, BBC Business | 3 |
+
+- `brief.json` (màn ngủ) chỉ lấy tiêu đề mục Tin AI.
+- Anthropic không có RSS chính thức (kiểm 14/11/2026). Feed dùng: `github.com/Olshansk/rss-feeds`, cào từ anthropic.com/news, có thể ngừng cập nhật.
+- Feed này chỉ có ngày, không có giờ. Bài ngày D được coi là cuối ngày D, nên xuất hiện đúng 1 lần, trễ khoảng 1 ngày.
+- Tin quảng cáo kiểu vé sự kiện TechCrunch bị lọc theo từ khoá tiếng Anh. Bài PR trên VnExpress chưa lọc.
+
+### Tỷ giá: Vietcombank
+
+- Nguồn: `https://www.vietcombank.com.vn/api/exchangerates?date=YYYY-MM-DD` (JSON, không có tài liệu chính thức).
+- EPUB: giá bán ra USD, EUR, JPY hôm nay và 91 ngày trước, kèm % thay đổi. Ngày nghỉ trả tỷ giá gần nhất trước đó.
+
+### Giá xăng E10 RON 95-III
+
+- Không còn bán RON 95 thường; Petrolimex bán E10 RON 95-III (trang trung gian ghi "Mức 3").
+- Nguồn: mục "Lịch sử thay đổi giá" trên `giaxanghomnay.com` (trang bên thứ ba, giá Petrolimex vùng 1).
+- Lý do: trang Petrolimex nạp giá bằng JavaScript mã hoá, PVOIL trả 403 (kiểm 14/11/2026).
+- EPUB: giá hiện hành, ngày điều chỉnh gần nhất, mức tăng/giảm so với kỳ trước. Trang đổi HTML thì EPUB ghi "Không có dữ liệu".
 
 ### Châm ngôn
 
@@ -138,9 +161,9 @@ Câu danh nhân do tự diễn đạt lại tiếng Việt, nguồn gốc câu n
 
 ## Báo sáng EPUB + OPDS
 
-- EPUB có 3 file (mỗi file 1 mục TOC): thời tiết + giá vàng, tin AI, châm ngôn.
+- EPUB có 6 file (mỗi file 1 mục TOC): thời tiết + giá cả (vàng, tỷ giá, xăng), 4 mục tin, châm ngôn.
 - Giá vàng viết thành từng dòng, **không dùng `<table>`**: CrossVi làm phẳng bảng và in nhãn "Tab Row N, Cell M" trước mỗi ô.
-- CSS không thêm margin cho `<p>`: CrossVi đã cách nửa dòng sau mỗi đoạn. Tin AI chỉ ghi tên nguồn, không in URL (máy không mở được link, URL dài tràn dòng).
+- CSS không thêm margin cho `<p>`: CrossVi đã cách nửa dòng sau mỗi đoạn. Tin chỉ ghi tên nguồn, không in URL (máy không mở được link, URL dài tràn dòng).
 - Sau khi tạo, workflow chạy `x3book tune` rồi `x3book check`. Check lỗi thì bỏ số hôm đó.
 - Pages deploy bằng artifact nên mỗi lần deploy thay cả site. Build tải lại EPUB cũ từ `opds.xml` đang chạy trên Pages (chỉ nhận tên `bao-sang-YYYYMMDD.epub`, host luôn lấy từ `PAGES_BASE_URL`). Lỗi tải thì bỏ qua số đó.
 - `opds.xml`: OPDS 1.2 acquisition feed tĩnh, 7 số gần nhất, link tuyệt đối.

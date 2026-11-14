@@ -8,9 +8,9 @@ import uuid
 import zipfile
 from xml.sax.saxutils import escape
 
-from .config import GOLD_EPUB_PERIODS
+from .config import FX_COMPARE_DAYS, GOLD_EPUB_PERIODS, NEWS_SECTIONS
 from .gold import change_vs, reference, to_million_per_luong
-from .vi import fmt_date_long, fmt_decimal
+from .vi import fmt_date_long, fmt_decimal, fmt_percent, fmt_thousands
 
 # CrossVi already adds half a line after each block (extra paragraph spacing), so the
 # EPUB adds no margins of its own. text-align:left stops justify from stretching short lines.
@@ -58,19 +58,47 @@ def _gold_html(day, price, hist, block):
     return body
 
 
-def _today_page(day, weather, price, hist, block):
-    return _page("Thời tiết, giá vàng", _weather_html(day, weather) + _gold_html(day, price, hist, block))
+def _rate(code, value):
+    # JPY is about 165 VND, so it keeps two decimals; USD and EUR are whole VND.
+    return fmt_decimal(value, 2) if code == "JPY" else fmt_thousands(value.quantize(1))
 
 
-def _news_page(news):
-    body = "<h1>Tin AI</h1>"
+def _fx_html(fx):
+    body = "<h2>Tỷ giá Vietcombank (bán ra)</h2>"
+    if not fx:
+        return body + "<p>Không có dữ liệu tỷ giá.</p>"
+    months = FX_COMPARE_DAYS // 30
+    for code, sell, _, old in fx:
+        line = "%s: %s, %d tháng trước " % (code, _rate(code, sell), months)
+        line += "%s (%s)" % (_rate(code, old), fmt_percent(sell / old - 1)) if old else "chưa có"
+        body += "<p>%s</p>" % escape(line)
+    return body
+
+
+def _fuel_html(fuel):
+    body = "<h2>Xăng E10 RON 95-III (vùng 1)</h2>"
+    if not fuel:
+        return body + "<p>Không có dữ liệu giá xăng.</p>"
+    day, new, old = fuel
+    diff = new - old
+    change = "tăng %s" % fmt_thousands(diff) if diff > 0 else "giảm %s" % fmt_thousands(-diff) if diff < 0 else "không đổi"
+    return body + "<p>%s đ/lít, từ %02d/%02d (%s)</p>" % (fmt_thousands(new), day.day, day.month, change)
+
+
+def _today_page(day, weather, price, hist, block, fx, fuel):
+    return _page("Thời tiết, giá cả", _weather_html(day, weather) + _gold_html(day, price, hist, block)
+                 + _fx_html(fx) + _fuel_html(fuel))
+
+
+def _news_page(title, news):
+    body = "<h1>%s</h1>" % escape(title)
     if not news:
         body += "<p>Không có tin mới trong 24 giờ qua.</p>"
-    for item, title, summary, translated in news:
-        body += "<h2>%s%s</h2>" % (escape(title), "" if translated else " (chưa dịch)")
+    for item, t, summary, translated in news:
+        body += "<h2>%s%s</h2>" % (escape(t), "" if translated else " (chưa dịch)")
         # The X3 cannot open links and long URLs overflow the line, so only the source name is shown.
         body += "<p>%s(%s)</p>" % (escape(summary) + " " if summary else "", escape(item.source))
-    return _page("Tin AI", body)
+    return _page(title, body)
 
 
 def _quote_page(quote):
@@ -82,13 +110,14 @@ def _quote_page(quote):
     return _page("Châm ngôn", body)
 
 
-def build(path, day, weather, price, hist, gold_block, news, quote):
-    """Write the EPUB to `path`. `news` is a list of (Item, title, summary, translated)."""
-    pages = [
-        ("hom-nay.xhtml", "Thời tiết, giá vàng", _today_page(day, weather, price, hist, gold_block)),
-        ("tin-ai.xhtml", "Tin AI", _news_page(news)),
-        ("cham-ngon.xhtml", "Châm ngôn", _quote_page(quote)),
-    ]
+def build(path, day, weather, price, hist, gold_block, news, quote, fx=None, fuel=None):
+    """Write the EPUB to `path`. `news` is a list of (Item, title, summary, translated);
+    each item goes to the page of its `section`. Every section page is written, even when empty."""
+    pages = [("hom-nay.xhtml", "Thời tiết, giá cả", _today_page(day, weather, price, hist, gold_block, fx, fuel))]
+    for sec in NEWS_SECTIONS:
+        pages.append((sec["file"] + ".xhtml", sec["title"],
+                      _news_page(sec["title"], [n for n in news if n[0].section == sec["file"]])))
+    pages.append(("cham-ngon.xhtml", "Châm ngôn", _quote_page(quote)))
     title = "Báo sáng %02d/%02d/%d" % (day.day, day.month, day.year)
     uid = "urn:uuid:" + str(uuid.uuid5(uuid.NAMESPACE_URL, "x3-daily/" + day.isoformat()))
     manifest = "".join('<item id="p%d" href="%s" media-type="application/xhtml+xml"/>' % (i, f)

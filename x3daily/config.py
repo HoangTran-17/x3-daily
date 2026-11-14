@@ -37,14 +37,32 @@ OPEN_METEO_URL = (
     "&timezone=Asia%2FHo_Chi_Minh&forecast_days=1"
 )
 
-# Reputable AI news feeds (RSS 2.0 or Atom).
-NEWS_FEEDS = [
-    {"source": "Google AI", "url": "https://blog.google/technology/ai/rss/"},
-    {"source": "MIT Technology Review", "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed"},
-    {"source": "TechCrunch", "url": "https://techcrunch.com/category/artificial-intelligence/feed/"},
-    {"source": "The Verge", "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"},
+# News sections, in EPUB order. "file" is the EPUB page; "lang" "en" items go through Gemini.
+# Feeds are RSS 2.0 or Atom. "date_only": the feed gives a date without a time (see news.collect).
+NEWS_SECTIONS = [
+    {"file": "tin-ai", "title": "Tin AI", "lang": "en", "max": 5, "feeds": [
+        {"source": "MIT Technology Review", "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed"},
+        {"source": "TechCrunch", "url": "https://techcrunch.com/category/artificial-intelligence/feed/"},
+        {"source": "The Verge", "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"},
+    ]},
+    {"file": "hang-ai", "title": "Anthropic, Google", "lang": "en", "max": 5, "feeds": [
+        # Anthropic publishes no RSS (checked 14/11/2026). This is a community feed scraped from
+        # anthropic.com/news; it may stop updating.
+        {"source": "Anthropic", "url": "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_news.xml",
+         "date_only": True},
+        {"source": "Google", "url": "https://blog.google/technology/ai/rss/"},
+        {"source": "Google DeepMind", "url": "https://deepmind.google/blog/rss.xml"},
+    ]},
+    {"file": "kinh-te-vn", "title": "Kinh tế Việt Nam", "lang": "vi", "max": 5, "feeds": [
+        {"source": "VnExpress", "url": "https://vnexpress.net/rss/kinh-doanh.rss"},
+    ]},
+    {"file": "kinh-te-tg", "title": "Kinh tế thế giới", "lang": "en", "max": 3, "feeds": [
+        {"source": "CNBC", "url": "https://www.cnbc.com/id/20910258/device/rss/rss.html"},
+        {"source": "BBC", "url": "https://feeds.bbci.co.uk/news/business/rss.xml"},
+    ]},
 ]
-NEWS_MAX = 5
+NEWS_HEADLINE_SECTION = "tin-ai"  # only this section goes to brief.json (sleep screen)
+NEWS_MAX = 5  # default for news.select
 NEWS_WINDOW_HOURS = 24
 NEWS_TITLE_MAX = 90
 NEWS_SUMMARY_MAX = 300
@@ -63,4 +81,14 @@ GOLD_TOLERANCE_DAYS = 7  # a reference record may be up to this many days older 
 # EPUB comparison points: (label, days back, tolerance). 1 week uses 2 days: with 7 a record
 # from 14 days ago would be shown as "1 week"; 2 still covers Sundays and one missed run.
 GOLD_EPUB_PERIODS = [("1 tuần", 7, 2), ("1 tháng", 30, 7), ("3 tháng", 91, 7), ("6 tháng", 182, 7), ("12 tháng", 365, 7)]
+
+# Vietcombank rates JSON (found 14/11/2026). A weekend or holiday date returns the last
+# published rates; a future date returns Count 0.
+VCB_FX_URL = "https://www.vietcombank.com.vn/api/exchangerates?date={ymd}"
+FX_CODES = ["USD", "EUR", "JPY"]
+FX_COMPARE_DAYS = 91  # "3 months ago", same span as the gold 3-month point
+# Fuel: product name exactly as the page writes it. Plain RON 95 is no longer sold; E10 RON 95
+# "Mức 3" is Petrolimex RON 95-III.
+FUEL_URL = "https://giaxanghomnay.com/"
+FUEL_PRODUCT = "Xăng E10 RON 95 Mức 3"
 EPUB_KEEP = 7

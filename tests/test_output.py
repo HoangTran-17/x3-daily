@@ -78,7 +78,7 @@ def test_epub_structure(tmp_path):
     assert "<table" not in pages  # CrossVi flattens tables
     assert "134,9" in pages and "Nước chảy đá mòn." in pages
     assert "https://" not in pages.split("<body>", 1)[-1]  # no URLs in the reading text
-    assert ncx.count("<navPoint") == 3
+    assert ncx.count("<navPoint") == 6  # today + 4 news sections + quote
 
 
 def test_epub_passes_x3book_check(tmp_path):

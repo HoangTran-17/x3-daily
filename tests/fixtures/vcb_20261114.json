@@ -1,0 +1,35 @@
+{
+ "Count": 4,
+ "Date": "2026-11-14T00:00:00",
+ "UpdatedDate": "2026-11-13T23:00:00+07:00",
+ "Data": [
+  {
+   "currencyName": "US DOLLAR",
+   "currencyCode": "USD",
+   "cash": "25500.00",
+   "transfer": "25530.00",
+   "sell": "25910.00"
+  },
+  {
+   "currencyName": "EURO",
+   "currencyCode": "EUR",
+   "cash": "27707.83",
+   "transfer": "27987.71",
+   "sell": "29169.60"
+  },
+  {
+   "currencyName": "UK POUND STERLING",
+   "currencyCode": "GBP",
+   "cash": "33161.18",
+   "transfer": "33496.15",
+   "sell": "34570.06"
+  },
+  {
+   "currencyName": "JAPANESE YEN",
+   "currencyCode": "JPY",
+   "cash": "154.85",
+   "transfer": "156.41",
+   "sell": "165.52"
+  }
+ ]
+}

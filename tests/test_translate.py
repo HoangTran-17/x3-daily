@@ -134,7 +134,8 @@ def test_translate_items_does_not_retry_429():
 # ---- EPUB shows Vietnamese text, or "(chưa dịch)" when there is no translation ----
 def _news_page(sandbox):
     with zipfile.ZipFile(sandbox / "_site" / "bao-sang-20261103.epub") as z:
-        return z.read("OEBPS/tin-ai.xhtml").decode("utf-8")
+        # The sandbox serves its RSS fixture as blog.google, which feeds the "Anthropic, Google" page.
+        return z.read("OEBPS/hang-ai.xhtml").decode("utf-8")
 
 
 def test_epub_uses_translation_from_fixture(sandbox):

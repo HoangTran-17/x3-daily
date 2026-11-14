@@ -8,8 +8,8 @@ import subprocess
 import sys
 from datetime import datetime, timedelta
 
-from . import brief, calendar_ics, epub, gold, news, opds, quotes, translate, weather
-from .config import DEFAULT_BASE_URL, DEFAULT_DEVICE_BASE_URL, DEVICE_HREF_SUFFIX, GOLD_CSV, PRIVATE_DIR, QUOTES_FILE, SITE_DIR, VN, WORK_DIR
+from . import brief, calendar_ics, epub, fuel, fx, gold, news, opds, quotes, translate, weather
+from .config import NEWS_HEADLINE_SECTION, DEFAULT_BASE_URL, DEFAULT_DEVICE_BASE_URL, DEVICE_HREF_SUFFIX, GOLD_CSV, PRIVATE_DIR, QUOTES_FILE, SITE_DIR, VN, WORK_DIR
 
 log = logging.getLogger("x3daily")
 
@@ -73,33 +73,34 @@ def build(now):
 
     items = _load_news(now)
     quote = quotes.pick(quotes.load(QUOTES_FILE), today)
+    headlines = [t for it, t, _, _ in items if it.section == NEWS_HEADLINE_SECTION]
 
-    full = brief.build_brief(now, wx, block, [t for _, t, _, _ in items], quote)
+    full = brief.build_brief(now, wx, block, headlines, quote)
     public = brief.public_version(full)
     (SITE_DIR / "brief.json").write_bytes(brief.fit(public))
 
     ics_url = os.environ.get("GCAL_ICS_URL", "").strip()
     if ics_url:
         events = calendar_ics.fetch_events(ics_url, today)
-        full = brief.build_brief(now, wx, block, [t for _, t, _, _ in items], quote, events)
+        full = brief.build_brief(now, wx, block, headlines, quote, events)
         # Written even with no events so the gist never keeps yesterday's calendar.
         PRIVATE_DIR.mkdir()
         (PRIVATE_DIR / "brief.json").write_bytes(brief.fit(full))
         log.info("calendar: %d events written to the private brief", len(events))
 
-    build_epub(now, wx, price, hist, block, items, quote, base_url)
+    build_epub(now, wx, price, hist, block, items, quote, base_url, fx.fetch(today), fuel.fetch())
     (SITE_DIR / ".nojekyll").write_text("", encoding="utf-8")
     (SITE_DIR / "index.html").write_text(
         '<!doctype html><meta charset="utf-8"><title>x3-daily</title>'
         '<p><a href="brief.json">brief.json</a> | <a href="opds.xml">opds.xml</a></p>\n', encoding="utf-8")
 
 
-def build_epub(now, wx, price, hist, block, items, quote, base_url):
+def build_epub(now, wx, price, hist, block, items, quote, base_url, rates=None, fuel_price=None):
     today = now.date()
     raw = WORK_DIR / "raw.epub"
     name = opds.epub_name(today)
     try:
-        epub.build(raw, today, wx, price, hist, block or {}, items, quote)
+        epub.build(raw, today, wx, price, hist, block or {}, items, quote, rates, fuel_price)
         if _run_x3book(raw, SITE_DIR / name):
             log.info("epub: %s written", name)
         else:

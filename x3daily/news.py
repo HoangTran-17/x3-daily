@@ -1,15 +1,15 @@
-"""AI news from RSS 2.0 / Atom feeds (stdlib xml.etree only)."""
+"""News sections from RSS 2.0 / Atom feeds (stdlib xml.etree only)."""
 import html
 import json
 import logging
 import re
 import xml.etree.ElementTree as ET
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
 from . import net
-from .config import NEWS_FEEDS, NEWS_MAX, NEWS_SUMMARY_MAX, NEWS_TITLE_MAX, NEWS_WINDOW_HOURS
+from .config import NEWS_MAX, NEWS_SECTIONS, NEWS_SUMMARY_MAX, NEWS_TITLE_MAX, NEWS_WINDOW_HOURS
 from .vi import truncate
 
 log = logging.getLogger(__name__)
@@ -56,6 +56,7 @@ class Item:
     published: datetime  # timezone-aware
     source: str
     summary: str = ""
+    section: str = NEWS_SECTIONS[0]["file"]
 
 
 def _text(el):
@@ -139,21 +140,37 @@ def select(items, now, limit=NEWS_MAX, window_hours=NEWS_WINDOW_HOURS):
     return chosen
 
 
+def is_vietnamese(item):
+    return any(s["lang"] == "vi" for s in NEWS_SECTIONS if s["file"] == item.section)
+
+
 def collect(now):
-    """Fetch every configured feed; a failing feed is skipped."""
-    items = []
-    for f in NEWS_FEEDS:
-        try:
-            items += parse_feed(net.get(f["url"]), f["source"])
-        except Exception as e:
-            log.warning("news %s: skipped (%s)", f["source"], type(e).__name__)
-    return select(items, now)
+    """Fetch every configured feed, section by section; a failing feed is skipped."""
+    chosen = []
+    for sec in NEWS_SECTIONS:
+        items = []
+        for f in sec["feeds"]:
+            try:
+                got = parse_feed(net.get(f["url"]), f["source"])
+            except Exception as e:
+                log.warning("news %s: skipped (%s)", f["source"], type(e).__name__)
+                continue
+            if f.get("date_only"):
+                # A date without a time parses as 00:00 UTC. Treat it as the end of that day so
+                # each post lands in exactly one issue (the next one), never in two or none.
+                got = [replace(i, published=i.published + timedelta(days=1)) for i in got]
+            items += got
+        for it in select(items, now, sec["max"]):
+            it.section = sec["file"]
+            chosen.append(it)
+    return chosen
 
 
 def dump_raw(items):
-    """JSON handed to the optional translation step: index + English text only."""
+    """JSON handed to the optional translation step: index + English text only.
+    Vietnamese items are left out but keep their index in `items`."""
     return json.dumps([{"i": n, "title": it.title, "summary": it.summary, "source": it.source}
-                       for n, it in enumerate(items)], ensure_ascii=False, indent=1)
+                       for n, it in enumerate(items) if not is_vietnamese(it)], ensure_ascii=False, indent=1)
 
 
 def save_items(path, items):
@@ -163,8 +180,8 @@ def save_items(path, items):
 
 def load_items(path):
     data = json.loads(path.read_text(encoding="utf-8"))
-    return [Item(d["title"], d["link"], datetime.fromisoformat(d["published"]), d["source"], d.get("summary", ""))
-            for d in data]
+    return [Item(d["title"], d["link"], datetime.fromisoformat(d["published"]), d["source"], d.get("summary", ""),
+                 d.get("section", NEWS_SECTIONS[0]["file"])) for d in data]
 
 
 def apply_vi(items, vi_data):
@@ -181,6 +198,9 @@ def apply_vi(items, vi_data):
                 by_i[e["i"]] = e
     out = []
     for n, it in enumerate(items):
+        if is_vietnamese(it):
+            out.append((truncate(_clean(it.title), NEWS_TITLE_MAX), truncate(_clean(it.summary), NEWS_SUMMARY_MAX), True))
+            continue
         e = by_i.get(n, {})
         ok_t = isinstance(e.get("t"), str) and bool(e["t"].strip())
         ok_s = isinstance(e.get("s"), str) and bool(e["s"].strip())
