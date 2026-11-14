@@ -94,6 +94,43 @@ def test_run_api_error_fails_without_leaking_key(tmp_path, monkeypatch, caplog):
     assert "HTTP 429" in caplog.text and KEY not in caplog.text
 
 
+def test_translate_items_retries_503_then_succeeds():
+    calls, waits = [], []
+
+    def flaky(req):
+        calls.append(1)
+        if len(calls) < 3:
+            raise translate.TranslateError("HTTP 503", transient=True)
+        return (FX / "gemini.json").read_bytes()
+
+    out = translate.translate_items([{"title": "a", "summary": "b"}], KEY, post=flaky, sleep=waits.append)
+    assert out and len(calls) == 3 and waits == [5, 15]
+
+
+def test_translate_items_gives_up_after_three_503():
+    calls = []
+
+    def down(req):
+        calls.append(1)
+        raise translate.TranslateError("HTTP 503", transient=True)
+
+    with pytest.raises(translate.TranslateError):
+        translate.translate_items([{"title": "a", "summary": "b"}], KEY, post=down, sleep=lambda d: None)
+    assert len(calls) == 3
+
+
+def test_translate_items_does_not_retry_429():
+    calls = []
+
+    def quota(req):
+        calls.append(1)
+        raise translate.TranslateError("HTTP 429")
+
+    with pytest.raises(translate.TranslateError):
+        translate.translate_items([{"title": "a", "summary": "b"}], KEY, post=quota, sleep=lambda d: None)
+    assert len(calls) == 1
+
+
 # ---- EPUB shows Vietnamese text, or "(chưa dịch)" when there is no translation ----
 def _news_page(sandbox):
     with zipfile.ZipFile(sandbox / "_site" / "bao-sang-20261103.epub") as z:

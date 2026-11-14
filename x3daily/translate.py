@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 
@@ -17,8 +18,15 @@ log = logging.getLogger(__name__)
 PROMPT_FILE = ROOT / "prompts" / "news_translate.md"
 
 
+RETRY_DELAYS = (5, 15)  # seconds before 2nd and 3rd attempt; Gemini returns 503 in bursts
+
+
 class TranslateError(Exception):
     """Translation failed. The message never contains the key or the request body."""
+
+    def __init__(self, msg, transient=False):
+        super().__init__(msg)
+        self.transient = transient
 
 
 def _model():
@@ -44,7 +52,7 @@ def _post(req):
         with urllib.request.urlopen(req, timeout=GEMINI_TIMEOUT) as resp:
             return resp.read(2_000_000)
     except urllib.error.HTTPError as e:  # 429 = quota exceeded, 400/403 = bad key
-        raise TranslateError("HTTP %d" % e.code) from None
+        raise TranslateError("HTTP %d" % e.code, transient=e.code >= 500) from None
     except Exception as e:
         raise TranslateError(type(e).__name__) from None
 
@@ -71,11 +79,18 @@ def parse_response(raw):
     return result
 
 
-def translate_items(raw_items, key, post=None):
+def translate_items(raw_items, key, post=None, sleep=time.sleep):
     if not raw_items:
         return []
     prompt = PROMPT_FILE.read_text(encoding="utf-8")
-    return parse_response((post or _post)(build_request(raw_items, key, prompt)))
+    for delay in RETRY_DELAYS + (None,):
+        try:
+            return parse_response((post or _post)(build_request(raw_items, key, prompt)))
+        except TranslateError as e:
+            if delay is None or not e.transient:
+                raise
+            log.info("translate: %s, retry in %ds", e, delay)
+            sleep(delay)
 
 
 def run(work_dir):
