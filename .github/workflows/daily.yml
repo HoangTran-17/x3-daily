@@ -13,14 +13,13 @@ permissions: {}
 
 jobs:
   news:
-    # Collect RSS and (optionally) translate with Gemini, Claude as fallback. No write permission here:
+    # Collect RSS and (optionally) translate with Gemini. No write permission here:
     # RSS text is untrusted input for the model.
     runs-on: ubuntu-latest
     permissions:
       contents: read
     env:
       HAS_GOOGLE: ${{ secrets.GOOGLE_API_KEY != '' }}
-      HAS_CLAUDE: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,30 +37,6 @@ jobs:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }} # optional repo variable; empty = default in config.py
         run: python -m x3daily translate-news
-      - name: Summarize in Vietnamese with Claude (optional, only when Gemini did not succeed)
-        id: claude
-        if: env.HAS_CLAUDE == 'true' && steps.gemini.outcome != 'success'
-        continue-on-error: true
-        uses: anthropics/claude-code-action@v1
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          github_token: ${{ github.token }}
-          prompt: "Read prompts/news_summary.md and follow it exactly."
-          claude_args: --allowedTools "Read,Write" --max-turns 6
-      # The action hides its output; print only the final error text (e.g. bad token) so failures are diagnosable.
-      - name: Show Claude error
-        if: steps.claude.outcome == 'failure' && steps.claude.outputs.execution_file != ''
-        env:
-          EXEC_FILE: ${{ steps.claude.outputs.execution_file }}
-        run: |
-          python - <<'EOF'
-          import json, os
-          data = json.load(open(os.environ["EXEC_FILE"]))
-          items = data if isinstance(data, list) else [data]
-          for it in items:
-              if isinstance(it, dict) and it.get("type") == "result":
-                  print("::warning::Claude: " + str(it.get("result", ""))[:300].replace("\n", " "))
-          EOF
       - uses: actions/upload-artifact@v4
         with:
           name: news
