@@ -111,7 +111,7 @@ không vào Pages. Build ghi nó ra `out-private/brief.json` (ngoài `_site/`), 
 - Rủi ro: API này không có tài liệu chính thức. Nó có thể đổi. Khi lỗi, bản tin bỏ ô vàng.
 - Lịch sử: Actions ghi 1 dòng mỗi ngày vào `data/gold.csv` (`date,buy,sell`, nghìn đồng/chỉ). % tính theo giá **bán ra**.
   - `brief.json`: 1 tháng = 30 ngày trước, 3 tháng = 91 ngày, 1 năm = 365 ngày (field `d1m`/`d3m`/`d1y`).
-  - EPUB: hôm nay + 1 tuần (7 ngày), 1 tháng, 3 tháng, 6 tháng (182 ngày), 12 tháng. Mỗi mốc ghi ngày, giá mua/bán, chênh lệch giá bán (tr/lượng và %).
+  - EPUB: hôm nay + 1 tuần (7 ngày), 1 tháng, 3 tháng, 6 tháng (182 ngày), 12 tháng. Mỗi mốc 1 dòng: ngày (dd/mm), giá mua/bán, % giá bán hôm nay so với mốc.
   - Lấy bản ghi mới nhất ≤ ngày mục tiêu, cũ hơn tối đa 7 ngày (mốc 1 tuần: tối đa 2 ngày, để không lấy giá 14 ngày trước làm "1 tuần").
   - Không có bản ghi: `brief.json` bỏ field đó; EPUB ghi "chưa có".
 - Nguồn của từng dòng `data/gold.csv`:
@@ -138,8 +138,9 @@ Câu danh nhân do tự diễn đạt lại tiếng Việt, nguồn gốc câu n
 
 ## Báo sáng EPUB + OPDS
 
-- EPUB có 4 file (mỗi file 1 mục TOC): thời tiết, giá vàng, tin AI, châm ngôn.
-- Giá vàng 30 ngày viết thành từng dòng, **không dùng `<table>`**: CrossVi làm phẳng bảng và in nhãn "Tab Row N, Cell M" trước mỗi ô.
+- EPUB có 3 file (mỗi file 1 mục TOC): thời tiết + giá vàng, tin AI, châm ngôn.
+- Giá vàng viết thành từng dòng, **không dùng `<table>`**: CrossVi làm phẳng bảng và in nhãn "Tab Row N, Cell M" trước mỗi ô.
+- CSS không thêm margin cho `<p>`: CrossVi đã cách nửa dòng sau mỗi đoạn. Tin AI chỉ ghi tên nguồn, không in URL (máy không mở được link, URL dài tràn dòng).
 - Sau khi tạo, workflow chạy `x3book tune` rồi `x3book check`. Check lỗi thì bỏ số hôm đó.
 - Pages deploy bằng artifact nên mỗi lần deploy thay cả site. Build tải lại EPUB cũ từ `opds.xml` đang chạy trên Pages (chỉ nhận tên `bao-sang-YYYYMMDD.epub`, host luôn lấy từ `PAGES_BASE_URL`). Lỗi tải thì bỏ qua số đó.
 - `opds.xml`: OPDS 1.2 acquisition feed tĩnh, 7 số gần nhất, link tuyệt đối.

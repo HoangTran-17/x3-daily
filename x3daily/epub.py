@@ -1,18 +1,21 @@
 """Build the daily EPUB ("Báo sáng") with zipfile only. EPUB 2 layout: OPF + NCX, one TOC entry per file.
 
-Gold history is written as plain lines, not a <table>: CrossVi flattens tables and
-prints "Tab Row N, Cell M:" before each cell.
+Gold points are written as plain lines, not a <table>: CrossVi flattens tables and
+prints "Tab Row N, Cell M:" before each cell. Each point fits one line on the X3 screen.
 The EPUB never contains calendar data.
 """
 import uuid
 import zipfile
-from xml.sax.saxutils import escape, quoteattr
+from xml.sax.saxutils import escape
 
-from .config import GOLD_EPUB_PERIODS, GOLD_TABLE_DAYS
+from .config import GOLD_EPUB_PERIODS
 from .gold import change_vs, reference, to_million_per_luong
-from .vi import fmt_date_long, fmt_decimal, fmt_signed
+from .vi import fmt_date_long, fmt_decimal
 
-CSS = "body{line-height:1.5}h1{font-size:1.4em}h2{font-size:1.15em}p{margin:0.4em 0}.small{font-size:0.85em}"
+# CrossVi already adds half a line after each block (extra paragraph spacing), so the
+# EPUB adds no margins of its own. text-align:left stops justify from stretching short lines.
+CSS = ("h1{font-size:1.3em;margin:0 0 0.3em}h2{font-size:1.1em;margin:0.6em 0 0.2em}"
+       "p{margin:0;text-indent:0;text-align:left}")
 
 
 def _page(title, body):
@@ -24,43 +27,39 @@ def _page(title, body):
     ) % (escape(title), body)
 
 
-def _weather_page(day, weather):
+def _weather_html(day, weather):
     body = "<h1>Báo sáng</h1><p>%s</p><h2>Thời tiết</h2>" % escape(fmt_date_long(day))
     if weather:
         body += "".join("<p><b>%s</b>: %s, %s</p>" % (escape(w["city"]), escape(w["now"]), escape(w["range"]))
                         for w in weather)
     else:
         body += "<p>Không có dữ liệu thời tiết.</p>"
-    return _page("Thời tiết", body)
+    return body
 
 
-def _gold_page(day, price, hist, block):
-    body = "<h1>Giá vàng nhẫn 9999</h1>"
+def _gold_html(day, price, hist, block):
+    body = "<h2>Giá vàng nhẫn 9999</h2>"
     if price:
-        body += "<p>Hôm nay: mua <b>%s</b>, bán <b>%s</b> (triệu đồng/lượng).</p>" % (block["buy"], block["sell"])
+        body += "<p>Hôm nay: mua <b>%s</b>, bán <b>%s</b> (triệu/lượng)</p>" % (block["buy"], block["sell"])
     else:
         body += "<p>Không có giá hôm nay.</p>"
-    body += "<h2>So với trước</h2>"
+    body += "<h2>So với trước (% giá bán)</h2>" if price else "<h2>So với trước</h2>"
     for label, days, tol in GOLD_EPUB_PERIODS:
         ref = reference(hist, day, days, tol)
         if ref is None:
-            body += "<p>%s trước: chưa có</p>" % escape(label)
+            body += "<p>%s: chưa có</p>" % escape(label)
             continue
         d, p = ref
-        line = "%s trước (%02d/%02d/%d): mua %s, bán %s" % (
-            label, d.day, d.month, d.year, fmt_decimal(to_million_per_luong(p.buy)), fmt_decimal(to_million_per_luong(p.sell)))
+        line = "%s (%02d/%02d): mua %s, bán %s" % (
+            label, d.day, d.month, fmt_decimal(to_million_per_luong(p.buy)), fmt_decimal(to_million_per_luong(p.sell)))
         if price:
-            line += "; bán ra %s (%s)" % (fmt_signed(to_million_per_luong(price.sell - p.sell)),
-                                          change_vs(hist, day, days, price.sell, tol))
+            line += ", %s" % change_vs(hist, day, days, price.sell, tol)
         body += "<p>%s</p>" % escape(line)
-    rows = sorted((d for d in hist if (day - d).days < GOLD_TABLE_DAYS and d <= day), reverse=True)
-    if rows:
-        body += "<h2>%d ngày gần nhất</h2>" % GOLD_TABLE_DAYS
-        for d in rows:
-            p = hist[d]
-            body += "<p>%02d/%02d: mua %s, bán %s</p>" % (
-                d.day, d.month, fmt_decimal(to_million_per_luong(p.buy)), fmt_decimal(to_million_per_luong(p.sell)))
-    return _page("Giá vàng", body)
+    return body
+
+
+def _today_page(day, weather, price, hist, block):
+    return _page("Thời tiết, giá vàng", _weather_html(day, weather) + _gold_html(day, price, hist, block))
 
 
 def _news_page(news):
@@ -69,10 +68,8 @@ def _news_page(news):
         body += "<p>Không có tin mới trong 24 giờ qua.</p>"
     for item, title, summary, translated in news:
         body += "<h2>%s%s</h2>" % (escape(title), "" if translated else " (chưa dịch)")
-        if summary:
-            body += "<p>%s</p>" % escape(summary)
-        body += '<p class="small">%s. <a href=%s>%s</a></p>' % (
-            escape(item.source), quoteattr(item.link), escape(item.link))
+        # The X3 cannot open links and long URLs overflow the line, so only the source name is shown.
+        body += "<p>%s(%s)</p>" % (escape(summary) + " " if summary else "", escape(item.source))
     return _page("Tin AI", body)
 
 
@@ -88,8 +85,7 @@ def _quote_page(quote):
 def build(path, day, weather, price, hist, gold_block, news, quote):
     """Write the EPUB to `path`. `news` is a list of (Item, title, summary, translated)."""
     pages = [
-        ("thoi-tiet.xhtml", "Thời tiết", _weather_page(day, weather)),
-        ("vang.xhtml", "Giá vàng", _gold_page(day, price, hist, gold_block)),
+        ("hom-nay.xhtml", "Thời tiết, giá vàng", _today_page(day, weather, price, hist, gold_block)),
         ("tin-ai.xhtml", "Tin AI", _news_page(news)),
         ("cham-ngon.xhtml", "Châm ngôn", _quote_page(quote)),
     ]

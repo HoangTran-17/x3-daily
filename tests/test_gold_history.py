@@ -62,7 +62,7 @@ def _gold_text(tmp_path, hist, price):
     path = tmp_path / "g.epub"
     epub.build(path, TODAY, [], price, hist, block, [], None)
     with zipfile.ZipFile(path) as z:
-        html = z.read("OEBPS/vang.xhtml").decode("utf-8")
+        html = z.read("OEBPS/hom-nay.xhtml").decode("utf-8")
     return re.sub(r"<[^>]+>", "\n", html)
 
 
@@ -72,15 +72,18 @@ def test_epub_shows_six_points_and_missing_ones(tmp_path):
             TODAY - timedelta(days=365): gold.Price(15100, 15400)}
     text = _gold_text(tmp_path, hist, gold.Price(13320, 13740))
     assert "Hôm nay: mua \n133,2\n, bán \n137,4\n" in text
-    assert "1 tuần trước (06/11/2026): mua 136,3, bán 140,3; bán ra -2,9 (-2,1%)" in text
-    assert "1 tháng trước (13/10/2026): mua 142,0, bán 146,0; bán ra -8,6 (-5,9%)" in text
-    assert "3 tháng trước: chưa có" in text and "6 tháng trước: chưa có" in text
-    assert "12 tháng trước (13/11/2025): mua 151,0, bán 154,0; bán ra -16,6 (-10,8%)" in text
+    assert "1 tuần (06/11): mua 136,3, bán 140,3, -2,1%" in text
+    assert "1 tháng (13/10): mua 142,0, bán 146,0, -5,9%" in text
+    assert "3 tháng: chưa có" in text and "6 tháng: chưa có" in text
+    assert "12 tháng (13/11): mua 151,0, bán 154,0, -10,8%" in text
+    assert "ngày gần nhất" not in text  # the 30-day list was dropped 14/11/2026
+    # Each point must fit one X3 line (about 58 characters at the default font).
+    assert max(len(line) for line in text.splitlines() if " (" in line and "mua" in line) <= 50
 
 
 def test_epub_without_today_price_still_lists_points(tmp_path):
     hist = {TODAY - timedelta(days=7): gold.Price(13630, 14030)}
     text = _gold_text(tmp_path, hist, None)
     assert "Không có giá hôm nay." in text
-    assert "1 tuần trước (06/11/2026): mua 136,3, bán 140,3\n" in text
+    assert "1 tuần (06/11): mua 136,3, bán 140,3\n" in text
     assert text.count("chưa có") == 4

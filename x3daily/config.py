@@ -63,5 +63,4 @@ GOLD_TOLERANCE_DAYS = 7  # a reference record may be up to this many days older 
 # EPUB comparison points: (label, days back, tolerance). 1 week uses 2 days: with 7 a record
 # from 14 days ago would be shown as "1 week"; 2 still covers Sundays and one missed run.
 GOLD_EPUB_PERIODS = [("1 tuần", 7, 2), ("1 tháng", 30, 7), ("3 tháng", 91, 7), ("6 tháng", 182, 7), ("12 tháng", 365, 7)]
-GOLD_TABLE_DAYS = 30
 EPUB_KEEP = 7

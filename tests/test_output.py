@@ -76,8 +76,9 @@ def test_epub_structure(tmp_path):
         pages = "".join(z.read(n).decode("utf-8") for n in z.namelist() if n.endswith(".xhtml"))
         ncx = z.read("OEBPS/toc.ncx").decode("utf-8")
     assert "<table" not in pages  # CrossVi flattens tables
-    assert "134,9" in pages and "Nước chảy đá mòn." in pages and "https://example.com/a" in pages
-    assert ncx.count("<navPoint") == 4
+    assert "134,9" in pages and "Nước chảy đá mòn." in pages
+    assert "https://" not in pages.split("<body>", 1)[-1]  # no URLs in the reading text
+    assert ncx.count("<navPoint") == 3
 
 
 def test_epub_passes_x3book_check(tmp_path):
