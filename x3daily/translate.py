@@ -21,7 +21,9 @@ PROMPT_FILE = ROOT / "prompts" / "news_translate.md"
 RESPONSE_SCHEMA = {
     "type": "ARRAY",
     "items": {"type": "OBJECT", "required": ["i", "t", "s"],
-              "properties": {"i": {"type": "INTEGER"}, "t": {"type": "STRING"}, "s": {"type": "STRING"}}},
+              "properties": {"i": {"type": "INTEGER"},
+                             "t": {"type": "STRING", "description": "Tiêu đề tiếng Việt có dấu"},
+                             "s": {"type": "STRING", "description": "Tóm tắt tiếng Việt có dấu"}}},
 }
 
 RETRY_DELAYS = (5, 15)  # seconds before 2nd and 3rd attempt; Gemini returns 503 in bursts
@@ -114,6 +116,8 @@ def run(work_dir):
         log.warning("translate: failed (%s)", e if isinstance(e, TranslateError) else type(e).__name__)
         return 1
     (work_dir / "news_vi.json").write_text(json.dumps(vi, ensure_ascii=False), encoding="utf-8")
-    log.info("translate: %d of %d items translated, %d without summary", len(vi), len(raw_items),
-             sum(1 for e in vi if not e["s"].strip()))
+    # With the schema on 14/11/2026 the model once wrote Vietnamese without diacritics; count it.
+    log.info("translate: %d of %d items translated, %d without summary, %d without diacritics",
+             len(vi), len(raw_items), sum(1 for e in vi if not e["s"].strip()),
+             sum(1 for e in vi if (e["t"] + e["s"]).isascii()))
     return 0

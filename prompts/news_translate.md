@@ -8,6 +8,7 @@ Với mỗi tin, viết:
 - `t`: tiêu đề tiếng Việt, tối đa 90 ký tự, giữ tên riêng (OpenAI, Claude, Nvidia…) nguyên dạng.
 - `s`: tóm tắt tiếng Việt 1–2 câu, tối đa 280 ký tự, chỉ dùng thông tin có trong tin. Không bịa số liệu.
 
+Viết tiếng Việt có dấu đầy đủ (ví dụ "Giá vàng giảm", không viết "Gia vang giam").
 Văn phong: ngắn, trung tính, câu chủ động. Không emoji. Không dấu ngoặc kép bao quanh.
 
 Chỉ trả về một mảng JSON, giữ nguyên `i` của tin gốc:
