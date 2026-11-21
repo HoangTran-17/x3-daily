@@ -133,6 +133,7 @@ Sửa nguồn và số tin trong `NEWS_SECTIONS` (`x3daily/config.py`). Mỗi m�
 | Mục | Nguồn | Số tin |
 |---|---|---|
 | Tin AI | MIT Technology Review, TechCrunch, The Verge (mục AI) | 5 |
+| An ninh mạng | The Hacker News, BleepingComputer, SecurityWeek, Krebs, Dark Reading, Security Affairs | 5 |
 | Anthropic, Google | Anthropic (feed cộng đồng, xem dưới), Google AI blog, Google DeepMind blog | 5 |
 | Kinh tế Việt Nam | VnExpress Kinh doanh (tiếng Việt, không qua Gemini) | 5 |
 | Kinh tế thế giới | CNBC Economy, BBC Business | 3 |

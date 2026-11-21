@@ -214,3 +214,16 @@ def test_vnexpress_page_fetch_failure_keeps_the_item(monkeypatch):
     monkeypatch.setattr(net, "get", _vnx_get({"https://vnexpress.net/may-loc-1.html": net.FetchError("IncompleteRead"),
                                               "https://vnexpress.net/chip-2.html": VNX_NEWS_PAGE}))
     assert _tech_titles() == ["Máy lọc Karofi ra mắt", "Chip mới ra mắt", "Tin ngoài VnExpress"]
+
+
+def test_security_section_collects_security_feeds_and_drops_webinars(monkeypatch):
+    def get(url, timeout=0, max_bytes=0):
+        if "TheHackersNews" in url:
+            return _rss(("WhatsApp patches three flaws", "Fri, 13 Nov 2026 20:00:00 +0000"),
+                        ("[Webinar] Secure your cloud", "Fri, 13 Nov 2026 21:00:00 +0000"))
+        if "bleepingcomputer" in url:
+            return _rss_links([("VMware vCenter flaw exploited", "https://bc.example/vcenter", "Fri, 13 Nov 2026 19:00:00 +0000")])
+        raise net.FetchError("offline")
+    monkeypatch.setattr(net, "get", get)
+    got = [(i.section, i.title) for i in news.collect(NOW) if i.section == "an-ninh-mang"]
+    assert got == [("an-ninh-mang", "WhatsApp patches three flaws"), ("an-ninh-mang", "VMware vCenter flaw exploited")]
