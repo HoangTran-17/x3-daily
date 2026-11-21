@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
+from urllib.parse import urlparse
 
 from . import net
 from .config import NEWS_MAX, NEWS_SECTIONS, NEWS_SUMMARY_MAX, NEWS_TITLE_MAX, NEWS_WINDOW_HOURS
@@ -47,6 +48,23 @@ _PROMO_RE = _keyword_re(PROMO_KEYWORDS)
 
 def is_promo(item):
     return bool(_PROMO_RE.search(item.title) or _PROMO_RE.search(item.summary))
+
+
+_VNX_PAID_RE = re.compile(r"'specialArticle'\s*:\s*'1'")
+
+
+def is_paid_vnexpress(item):
+    """VnExpress paid (PR) articles look like news in the RSS. Only the article page says so,
+    in a dataLayer line (checked 21/11/2026: 12 of 169 pages, no false positive). A failed
+    fetch keeps the item."""
+    if urlparse(item.link).hostname not in ("vnexpress.net", "www.vnexpress.net"):
+        return False
+    try:
+        page = net.get(item.link).decode("utf-8", "replace")
+    except net.FetchError:
+        log.warning("news: paid-article check failed, item kept: %s", item.title)
+        return False
+    return bool(_VNX_PAID_RE.search(page))
 
 
 @dataclass
@@ -118,8 +136,9 @@ def _similar(a, b):
     return bool(wa and wb) and len(wa & wb) / len(wa | wb) >= 0.7
 
 
-def select(items, now, limit=NEWS_MAX, window_hours=NEWS_WINDOW_HOURS):
-    """Newest first, only items from the last `window_hours`, without ads or duplicate links/titles."""
+def select(items, now, limit=NEWS_MAX, window_hours=NEWS_WINDOW_HOURS, reject=None):
+    """Newest first, only items from the last `window_hours`, without ads or duplicate links/titles.
+    `reject(item)` is a costly check, called only for items that would otherwise be chosen."""
     cutoff = now - timedelta(hours=window_hours)
     fresh = []
     for i in items:
@@ -133,6 +152,9 @@ def select(items, now, limit=NEWS_MAX, window_hours=NEWS_WINDOW_HOURS):
     chosen = []
     for it in fresh:
         if any(it.link == c.link or _similar(it.title, c.title) for c in chosen):
+            continue
+        if reject and reject(it):
+            log.info("news: paid article dropped: %s", it.title)
             continue
         chosen.append(it)
         if len(chosen) == limit:
@@ -160,7 +182,7 @@ def collect(now):
                 # each post lands in exactly one issue (the next one), never in two or none.
                 got = [replace(i, published=i.published + timedelta(days=1)) for i in got]
             items += got
-        for it in select(items, now, sec["max"]):
+        for it in select(items, now, sec["max"], reject=is_paid_vnexpress):
             it.section = sec["file"]
             chosen.append(it)
     return chosen

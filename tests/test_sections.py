@@ -166,3 +166,51 @@ def test_gemini_request_requires_summary_field():
     from x3daily import translate
     body = json.loads(translate.build_request([{"i": 0, "title": "a"}], "k", "p").data)
     assert body["generationConfig"]["responseSchema"]["items"]["required"] == ["i", "t", "s"]
+
+
+# VnExpress marks paid articles only on the article page, in a dataLayer line (checked 21/11/2026 on
+# 169 pages: 12 had specialArticle=1 and a contract number, 0 false positives). The RSS has no marker.
+VNX_PR_PAGE = b"<script>dataLayer.push({'ctrNo':'HN012385/11'});dataLayer.push({'specialArticle':'1'});</script>"
+VNX_NEWS_PAGE = b"<script>dataLayer.push({'article_type':'text'});dataLayer.push({'VideoClassify':'None'});</script>"
+
+
+def _vnx_get(pages):
+    def get(url, timeout=0, max_bytes=0):
+        if url in pages:
+            page = pages[url]
+            if isinstance(page, Exception):
+                raise page
+            return page
+        if "so-hoa" in url:
+            return _rss_links([("Máy lọc Karofi ra mắt", "https://vnexpress.net/may-loc-1.html", "Sat, 14 Nov 2026 03:00:00 +0700"),
+                               ("Chip mới ra mắt", "https://vnexpress.net/chip-2.html", "Sat, 14 Nov 2026 02:00:00 +0700"),
+                               ("Tin ngoài VnExpress", "https://ex.com/3", "Sat, 14 Nov 2026 01:00:00 +0700")])
+        raise net.FetchError("offline")
+    return get
+
+
+def _rss_links(entries):
+    items = "".join("<item><title>%s</title><link>%s</link><pubDate>%s</pubDate></item>" % e for e in entries)
+    return ('<?xml version="1.0"?><rss version="2.0"><channel>%s</channel></rss>' % items).encode("utf-8")
+
+
+def _tech_titles():
+    return [i.title for i in news.collect(NOW) if i.section == "cong-nghe"]
+
+
+def test_vnexpress_paid_article_is_dropped(monkeypatch):
+    monkeypatch.setattr(net, "get", _vnx_get({"https://vnexpress.net/may-loc-1.html": VNX_PR_PAGE,
+                                              "https://vnexpress.net/chip-2.html": VNX_NEWS_PAGE}))
+    assert _tech_titles() == ["Chip mới ra mắt", "Tin ngoài VnExpress"]
+
+
+def test_vnexpress_news_article_is_kept(monkeypatch):
+    monkeypatch.setattr(net, "get", _vnx_get({"https://vnexpress.net/may-loc-1.html": VNX_NEWS_PAGE,
+                                              "https://vnexpress.net/chip-2.html": VNX_NEWS_PAGE}))
+    assert _tech_titles() == ["Máy lọc Karofi ra mắt", "Chip mới ra mắt", "Tin ngoài VnExpress"]
+
+
+def test_vnexpress_page_fetch_failure_keeps_the_item(monkeypatch):
+    monkeypatch.setattr(net, "get", _vnx_get({"https://vnexpress.net/may-loc-1.html": net.FetchError("IncompleteRead"),
+                                              "https://vnexpress.net/chip-2.html": VNX_NEWS_PAGE}))
+    assert _tech_titles() == ["Máy lọc Karofi ra mắt", "Chip mới ra mắt", "Tin ngoài VnExpress"]
