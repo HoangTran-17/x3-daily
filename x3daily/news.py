@@ -136,9 +136,26 @@ def _similar(a, b):
     return bool(wa and wb) and len(wa & wb) / len(wa | wb) >= 0.7
 
 
-def select(items, now, limit=NEWS_MAX, window_hours=NEWS_WINDOW_HOURS, reject=None):
+# Words that many unrelated headlines share. A story match needs names (vendor, product, CVE number).
+_GENERIC = frozenset("""the a an of to in for on and with as by from is are at new how that this after into over says
+say its it be has have than more his her their flaw flaws vulnerability vulnerabilities critical security patch
+patches patched hackers hacker zero day data breach exploit exploited exploits attack attacks cve 2026 rce bug bugs
+fix fixes update updates including warns malware ransomware cyberattack million customers code execution remote""".split())
+
+
+def _same_story(a, b):
+    """Looser than `_similar`, for sections where many outlets cover the same stories: two names
+    in common, or one name plus two more shared words."""
+    wa, wb = set(_norm(a).split()), set(_norm(b).split())
+    shared = {w for w in wa & wb if len(w) > 2}
+    names = shared - _GENERIC
+    return len(names) >= 2 or (len(names) >= 1 and len(shared) >= 3)
+
+
+def select(items, now, limit=NEWS_MAX, window_hours=NEWS_WINDOW_HOURS, reject=None, same_story=False):
     """Newest first, only items from the last `window_hours`, without ads or duplicate links/titles.
-    `reject(item)` is a costly check, called only for items that would otherwise be chosen."""
+    `reject(item)` is a costly check, called only for items that would otherwise be chosen.
+    `same_story` also drops an item that covers the same story as a chosen one (see `_same_story`)."""
     cutoff = now - timedelta(hours=window_hours)
     fresh = []
     for i in items:
@@ -151,7 +168,8 @@ def select(items, now, limit=NEWS_MAX, window_hours=NEWS_WINDOW_HOURS, reject=No
     fresh.sort(key=lambda i: i.published, reverse=True)
     chosen = []
     for it in fresh:
-        if any(it.link == c.link or _similar(it.title, c.title) for c in chosen):
+        if any(it.link == c.link or _similar(it.title, c.title) or (same_story and _same_story(it.title, c.title))
+               for c in chosen):
             continue
         if reject and reject(it):
             log.info("news: paid article dropped: %s", it.title)
@@ -182,7 +200,8 @@ def collect(now):
                 # each post lands in exactly one issue (the next one), never in two or none.
                 got = [replace(i, published=i.published + timedelta(days=1)) for i in got]
             items += got
-        for it in select(items, now, sec["max"], reject=is_paid_vnexpress):
+        for it in select(items, now, sec["max"], reject=is_paid_vnexpress,
+                          same_story=sec.get("same_story", False)):
             it.section = sec["file"]
             chosen.append(it)
     return chosen

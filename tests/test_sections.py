@@ -1,6 +1,7 @@
 """Offline tests for news sections, Vietcombank rates and the fuel price (added 14/11/2026)."""
 import json
 import re
+import pytest
 import zipfile
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -227,3 +228,35 @@ def test_security_section_collects_security_feeds_and_drops_webinars(monkeypatch
     monkeypatch.setattr(net, "get", get)
     got = [(i.section, i.title) for i in news.collect(NOW) if i.section == "an-ninh-mang"]
     assert got == [("an-ninh-mang", "WhatsApp patches three flaws"), ("an-ninh-mang", "VMware vCenter flaw exploited")]
+
+
+SAME_STORY = [
+    ("China-Linked Hackers Exploit Critical VMware vCenter Zero-Day to Gain Access",
+     "VMware patches vCenter zero-day exploited in attacks since September"),
+    ("BleepingComputer: Hackers steal data of 1.6 million SBC Medical Group customers",
+     "SBC Medical Group Data Breach Impacts Over 2 Million"),
+    ("PHP security updates fix 18 flaws, including critical RCE bugs", "PHP Patches Seven Critical RCE Vulnerabilities"),
+]
+DIFFERENT_STORY = [  # real pairs from 21/11/2026 that share only generic words
+    ("WhatsApp Patches 3 Security Flaws, Including Android Bug", "PHP security updates fix 18 flaws, including critical RCE bugs"),
+    ("SonicWall Warns Gen 6 Firewalls Won't Get Security Patches", "F5 releases emergency patches for critical BIG-IP RCE flaws"),
+    ("Linux KVM Flaw CVE-2026-99312 Lets Guest VMs Access Host Memory", "Hackers Exploit Cisco Expressway Flaw CVE-2026-76466"),
+]
+
+
+@pytest.mark.parametrize("a,b", SAME_STORY)
+def test_same_story_detects_repeats(a, b):
+    assert news._same_story(a, b)
+
+
+@pytest.mark.parametrize("a,b", DIFFERENT_STORY)
+def test_same_story_keeps_unrelated_headlines(a, b):
+    assert not news._same_story(a, b)
+
+
+def test_select_same_story_only_when_asked():
+    t = NOW - timedelta(hours=1)
+    a = news.Item(SAME_STORY[0][0], "https://a/1", t, "A")
+    b = news.Item(SAME_STORY[0][1], "https://b/2", t - timedelta(minutes=5), "B")
+    assert news.select([a, b], NOW) == [a, b]
+    assert news.select([a, b], NOW, same_story=True) == [a]

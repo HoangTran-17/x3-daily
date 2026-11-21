@@ -54,13 +54,18 @@ NEWS_SECTIONS = [
         {"source": "Google DeepMind", "url": "https://deepmind.google/blog/rss.xml"},
     ]},
     # Feeds checked 21/11/2026: each matched stories from the J2TEAM morning digests of 18, 20 and 21/11.
-    {"file": "an-ninh-mang", "title": "An ninh mạng", "lang": "en", "max": 5, "feeds": [
+    {"file": "an-ninh-mang", "title": "An ninh mạng", "lang": "en", "max": 5, "same_story": True, "feeds": [
         {"source": "The Hacker News", "url": "https://feeds.feedburner.com/TheHackersNews"},
         {"source": "BleepingComputer", "url": "https://www.bleepingcomputer.com/feed/"},
         {"source": "SecurityWeek", "url": "https://feeds.feedburner.com/securityweek"},
         {"source": "Krebs on Security", "url": "https://krebsonsecurity.com/feed/"},
         {"source": "Dark Reading", "url": "https://www.darkreading.com/rss.xml"},
         {"source": "Security Affairs", "url": "https://securityaffairs.com/feed"},
+    ]},
+    {"file": "big-tech", "title": "Big Tech", "lang": "en", "max": 5, "same_story": True, "feeds": [
+        {"source": "Ars Technica", "url": "https://feeds.arstechnica.com/arstechnica/index"},
+        {"source": "The Register", "url": "https://www.theregister.com/headlines.atom"},
+        {"source": "9to5Google", "url": "https://9to5google.com/feed/"},
     ]},
     {"file": "cong-nghe", "title": "Công nghệ", "lang": "vi", "max": 5, "feeds": [
         {"source": "VnExpress Số hóa", "url": "https://vnexpress.net/rss/so-hoa.rss"},
