@@ -24,6 +24,10 @@ def _feed_get(url, timeout=0, max_bytes=0):
         # 13/11 posts may still appear later that day, so they wait for the 15/11 issue.
         return _rss(("Wait", "Fri, 13 Nov 2026 00:00:00 +0000"), ("Claude news", "Thu, 12 Nov 2026 00:00:00 +0000"),
                     ("Old post", "Wed, 11 Nov 2026 00:00:00 +0000"))
+    if "so-hoa" in url:
+        return _rss(("Chip mới ra mắt", "Sat, 14 Nov 2026 02:00:00 +0700"))
+    if "the-gioi" in url:
+        return _rss(("Họp thượng đỉnh", "Sat, 14 Nov 2026 01:00:00 +0700"))
     if "vnexpress" in url:
         return _rss(("Lãi suất tiết kiệm giảm", "Sat, 14 Nov 2026 03:00:00 +0700"))
     if "cnbc" in url:
@@ -37,18 +41,19 @@ def test_collect_tags_sections_and_shifts_date_only_feeds(monkeypatch):
     monkeypatch.setattr(net, "get", _feed_get)
     items = news.collect(NOW)
     assert [(i.section, i.title) for i in items] == [
-        ("tin-ai", "New AI model"), ("hang-ai", "Claude news"),
-        ("kinh-te-vn", "Lãi suất tiết kiệm giảm"), ("kinh-te-tg", "Fed holds rates")]
+        ("tin-ai", "New AI model"), ("hang-ai", "Claude news"), ("cong-nghe", "Chip mới ra mắt"),
+        ("kinh-te-vn", "Lãi suất tiết kiệm giảm"), ("kinh-te-tg", "Fed holds rates"),
+        ("the-gioi", "Họp thượng đỉnh")]
 
 
 def test_vietnamese_items_skip_translation_but_keep_their_index(monkeypatch, tmp_path):
     monkeypatch.setattr(net, "get", _feed_get)
     items = news.collect(NOW)
     raw = json.loads(news.dump_raw(items))
-    assert [r["i"] for r in raw] == [0, 1, 3]
-    vi = news.apply_vi(items, [{"i": 3, "t": "Fed giữ lãi suất", "s": "Tóm tắt."}])
-    assert vi[2] == ("Lãi suất tiết kiệm giảm", "Tóm tắt 0", True)
-    assert vi[3] == ("Fed giữ lãi suất", "Tóm tắt.", True) and vi[0][2] is False
+    assert [r["i"] for r in raw] == [0, 1, 4]
+    vi = news.apply_vi(items, [{"i": 4, "t": "Fed giữ lãi suất", "s": "Tóm tắt."}])
+    assert vi[3] == ("Lãi suất tiết kiệm giảm", "Tóm tắt 0", True)
+    assert vi[4] == ("Fed giữ lãi suất", "Tóm tắt.", True) and vi[0][2] is False
     news.save_items(tmp_path / "n.json", items)
     assert [i.section for i in news.load_items(tmp_path / "n.json")] == [i.section for i in items]
 

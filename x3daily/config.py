@@ -53,12 +53,18 @@ NEWS_SECTIONS = [
         {"source": "Google", "url": "https://blog.google/technology/ai/rss/"},
         {"source": "Google DeepMind", "url": "https://deepmind.google/blog/rss.xml"},
     ]},
+    {"file": "cong-nghe", "title": "Công nghệ", "lang": "vi", "max": 5, "feeds": [
+        {"source": "VnExpress Số hóa", "url": "https://vnexpress.net/rss/so-hoa.rss"},
+    ]},
     {"file": "kinh-te-vn", "title": "Kinh tế Việt Nam", "lang": "vi", "max": 5, "feeds": [
         {"source": "VnExpress", "url": "https://vnexpress.net/rss/kinh-doanh.rss"},
     ]},
     {"file": "kinh-te-tg", "title": "Kinh tế thế giới", "lang": "en", "max": 3, "feeds": [
         {"source": "CNBC", "url": "https://www.cnbc.com/id/20910258/device/rss/rss.html"},
         {"source": "BBC", "url": "https://feeds.bbci.co.uk/news/business/rss.xml"},
+    ]},
+    {"file": "the-gioi", "title": "Thời sự thế giới", "lang": "vi", "max": 3, "feeds": [
+        {"source": "VnExpress Thế giới", "url": "https://vnexpress.net/rss/the-gioi.rss"},
     ]},
 ]
 NEWS_HEADLINE_SECTION = "tin-ai"  # only this section goes to brief.json (sleep screen)
